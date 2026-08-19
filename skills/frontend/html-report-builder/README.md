@@ -5,7 +5,13 @@
 - **Classic Enterprise（蓝白企业风）**：渐变封面、结构化导航、编号章节、白色内容卡片、KPI、表格、流程条、截图展示和可折叠原始材料。
 - **Modern SaaS（硅谷高级 SaaS 风）**：深色 Hero、Scroll-aware 导航、Bento Box 卡片、Timeline、Accordion 对比表、Demo 视频和 CTA 收尾。
 
-![报告样式预览](assets/report-style-preview.png)
+### Classic Enterprise 预览
+
+![蓝白企业风 HTML 报告预览](assets/report-style-preview.png)
+
+### Modern SaaS 预览
+
+![硅谷高级 SaaS 风 HTML 报告预览](assets/report-style-preview-saas.png)
 
 ## 适用场景
 
@@ -18,6 +24,7 @@
 - `SKILL.md`：Agent 使用此 skill 时必须遵循的工作流和约束。
 - `assets/report-template-classic.html`：Classic Enterprise 风格的静态 HTML 模板。
 - `assets/report-template-saas.html`：Modern SaaS 风格的静态 HTML 模板。
+- `assets/report-style-preview*.png`：两套视觉风格的 README 预览图。
 - `references/report-style-guide-classic.md`：蓝白企业报告的视觉系统和组件规范。
 - `references/report-style-guide-saas.md`：Modern SaaS 报告的视觉系统和组件规范。
 - `scripts/make_standalone_html.py`：把本地图片资产内联为 Base64，生成单文件 HTML。
