@@ -37,6 +37,8 @@ npx skills@latest add moesama228/my-skills --global
 | [Playground](skills/playground/) | 轻量、趣味、探索性以及尚未形成独立领域的技能 |
 | [Productivity](skills/productivity/) | 跨项目的通用效率和元工作流 |
 
+Playground 是孵化分类，不是永久的杂项分类。当其中至少 3 个技能形成具有相同主要用户目标的稳定技能簇时，该技能簇必须迁移到新的独立分类。完整判定和迁移要求见 [Playground graduation](AGENTS.md#playground-graduation)。
+
 ## 可用技能
 
 ### Engineering
