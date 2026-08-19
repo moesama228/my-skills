@@ -34,6 +34,7 @@ npx skills@latest add moesama228/my-skills --global
 | --- | --- |
 | [Engineering](skills/engineering/) | 软件设计、实现、测试、调试和交付工作流 |
 | [Frontend](skills/frontend/) | Web 界面、交互、可访问性和浏览器工作流 |
+| [Playground](skills/playground/) | 轻量、趣味、探索性以及尚未形成独立领域的技能 |
 | [Productivity](skills/productivity/) | 跨项目的通用效率和元工作流 |
 
 ## 可用技能
@@ -41,6 +42,10 @@ npx skills@latest add moesama228/my-skills --global
 ### Engineering
 
 - [`commit-plus`](skills/engineering/commit-plus/SKILL.md)：安全、原子化地检查、分组并提交 Git 变更，同时保留范围外的本地工作。
+
+### Playground
+
+- [`fun-fact`](skills/playground/fun-fact/SKILL.md)：介绍一条简短可靠、附带原理解释的冷知识，并在用户需要时查证来源。
 
 ### Productivity
 
