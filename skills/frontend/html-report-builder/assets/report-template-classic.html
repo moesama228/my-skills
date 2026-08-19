@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>汇报材料标题 · 项目汇报</title>
+<style>
+  :root{
+    --bg:#eef1f6; --panel:#ffffff; --text:#16202c; --muted:#5a6573;
+    --line:#dde3ec; --accent:#2f6feb; --accent-soft:#e7f0ff;
+    --ok:#16833a; --warn:#a15c00; --shadow:0 12px 34px rgba(24,34,52,.10);
+    --hl:rgb(61,110,226);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.7 "Segoe UI","Microsoft YaHei",Arial,sans-serif;}
+  a{color:var(--accent);text-decoration:none;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 22px 80px;}
+  .hl{color:var(--hl);font-weight:700;}
+
+  .hero{background:linear-gradient(135deg,#1f3a6e 0%,#2f6feb 60%,#4a8bff 100%);
+    color:#fff;border-radius:0 0 22px 22px;padding:54px 40px 46px;box-shadow:var(--shadow);}
+  .hero .kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.85;margin:0 0 14px;}
+  .hero h1{margin:0;font-size:34px;line-height:1.25;font-weight:800;}
+  .hero p{margin:16px 0 0;max-width:780px;font-size:16px;opacity:.95;}
+  .hero .meta{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;}
+  .pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+    border-radius:999px;padding:6px 14px;font-size:13px;}
+
+  nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(24,34,52,.05);}
+  nav .wrap.nav-structured{padding-top:9px;padding-bottom:9px;display:flex;
+    gap:12px;align-items:stretch;justify-content:flex-start;flex-wrap:wrap;}
+  nav a{color:var(--muted);text-decoration:none;}
+  .nav-phase,.nav-phase-title{display:flex;align-items:center;gap:8px;border:1px solid transparent;
+    border-radius:10px;padding:8px 12px;color:#1f3a6e;font-weight:800;font-size:14px;}
+  .nav-phase,.nav-phase-title{background:#fff;}
+  .nav-phase-title{border-color:#d7e4f5;}
+  .nav-phase:hover,.nav-phase-title:hover{background:#f7f9fc;border-color:#cfe0ff;color:var(--accent);}
+  .nav-index{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:7px;
+    background:var(--accent);color:#fff;font-size:12px;line-height:1;flex:0 0 auto;}
+  .nav-group{min-width:0;border:1px solid var(--line);border-radius:12px;background:#f7f9fc;
+    display:grid;grid-template-columns:max-content max-content;align-items:center;gap:10px;padding:5px 8px;}
+  .nav-sub{display:flex;gap:4px;flex-wrap:wrap;align-items:center;min-width:0;}
+  .nav-sub a{padding:7px 9px;border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;white-space:nowrap;}
+  .nav-sub a:hover{background:#fff;color:var(--accent);}
+
+  section{margin-top:40px;scroll-margin-top:96px;}
+  .phase-sub{margin-top:28px;}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin:0 0 18px;}
+  .sec-head .no{font-size:14px;font-weight:800;color:#fff;background:var(--accent);border-radius:8px;padding:4px 11px;}
+  .sec-head h2{margin:0;font-size:24px;font-weight:800;}
+  .lead{color:var(--muted);margin:0 0 18px;max-width:880px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 28px;box-shadow:var(--shadow);}
+  .card + .card{margin-top:22px;}
+  .subtle-title{margin:0 0 14px;font-size:18px;}
+  code{background:#eef2f8;color:#1f3a6e;border-radius:5px;padding:1px 6px;
+    font:13px/1.5 "Cascadia Code","Consolas",monospace;}
+
+  .section-kicker{margin:0 0 7px;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;}
+  .two-col{display:grid;grid-template-columns:.9fr 1.1fr;gap:26px;align-items:center;}
+  .two-col h3{margin:0 0 10px;font-size:20px;}
+  .two-col p{margin:0 0 12px;color:var(--muted);}
+  .point-list{display:grid;gap:10px;margin-top:16px;}
+  .point{border-left:4px solid var(--accent);background:#f7f9fc;padding:10px 12px;border-radius:0 10px 10px 0;color:var(--muted);font-size:14px;}
+  .point b{color:var(--text);}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+  .kpi{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .kpi b{display:block;font-size:22px;color:#1f3a6e;font-weight:800;}
+  .kpi span{font-size:12px;color:var(--muted);}
+
+  .flow,.arena-flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .flow .step,.arena-flow .step{background:var(--accent-soft);color:#1f3a6e;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:800;}
+  .flow .step.final,.arena-flow .step.final{background:#dff7e8;color:var(--ok);}
+  .flow .arrow,.arena-flow .arrow{color:var(--accent);font-weight:900;}
+
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px;}
+  .item{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:16px;min-height:130px;}
+  .item b{display:block;color:#1f3a6e;font-size:16px;margin-bottom:7px;}
+  .item p{margin:0;color:var(--muted);font-size:14px;}
+
+  .table-wrap{overflow:auto;border-radius:12px;border:1px solid var(--line);}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+  thead th{background:var(--accent-soft);color:#1f3a6e;font-weight:700;border-bottom:2px solid #cfe0ff;}
+  tbody tr:nth-child(even){background:#f7f9fc;}
+  .compare td:first-child{font-weight:700;color:#1f3a6e;white-space:nowrap;}
+
+  .shot{border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:#fff;}
+  .shot img{display:block;width:100%;height:auto;cursor:zoom-in;transition:filter .15s;}
+  .shot img:hover{filter:brightness(.96);}
+  .cap{font-size:12px;color:var(--muted);text-align:center;padding:8px 10px;border-top:1px solid var(--line);background:#fafbfd;}
+  .media-placeholder{aspect-ratio:16/9;display:grid;place-items:center;background:linear-gradient(135deg,#f7fbff,#e7f0ff);
+    color:#1f3a6e;font-weight:800;border-bottom:1px solid var(--line);}
+  .carousel{position:relative;}
+  .carousel .slides{position:relative;}
+  .carousel .slide{display:none;width:100%;height:auto;cursor:zoom-in;}
+  .carousel .slide.active{display:block;}
+  .carousel .cnav{position:absolute;top:calc(50% - 14px);transform:translateY(-50%);z-index:5;
+    width:38px;height:38px;border:none;border-radius:50%;background:rgba(15,23,38,.5);
+    color:#fff;font-size:24px;line-height:1;cursor:pointer;display:grid;place-items:center;
+    transition:background .15s;padding:0;}
+  .carousel .cnav:hover{background:rgba(15,23,38,.82);}
+  .carousel .cnav.prev{left:10px;}
+  .carousel .cnav.next{right:10px;}
+  .carousel .dots{display:inline-flex;gap:6px;vertical-align:middle;margin:0 4px;}
+  .carousel .dot{width:7px;height:7px;border-radius:50%;background:#c4ccd8;}
+  .carousel .dot.active{background:var(--accent);}
+
+  .notice{background:#fff7e6;border:1px solid #ffd591;color:#8a5a00;border-radius:10px;padding:12px 16px;margin:0 0 18px;font-size:14px;}
+  details.report-raw{margin-top:22px;border:1px solid var(--line);border-radius:12px;background:#fafbfd;overflow:hidden;}
+  details.report-raw>summary{cursor:pointer;padding:13px 18px;font-weight:700;color:#1f3a6e;background:var(--accent-soft);list-style:none;user-select:none;}
+  details.report-raw>summary::-webkit-details-marker{display:none;}
+  details.report-raw>summary::before{content:"▶ ";font-size:11px;color:var(--accent);}
+  details.report-raw[open]>summary::before{content:"▼ ";}
+  .raw-body{padding:8px 22px 22px;font-size:13px;}
+
+  .lightbox{position:fixed;inset:0;background:rgba(10,16,28,.86);display:none;align-items:center;justify-content:center;z-index:100;padding:30px;cursor:zoom-out;}
+  .lightbox.open{display:flex;}
+  .lightbox img{max-width:95vw;max-height:92vh;border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.55);}
+  .lightbox .hint{position:fixed;top:18px;right:24px;color:#cdd6e4;font-size:13px;}
+  footer{margin-top:54px;text-align:center;color:var(--muted);font-size:13px;}
+
+  @media(max-width:820px){
+    .two-col,.grid-3{grid-template-columns:1fr;}
+    .hero h1{font-size:26px;}
+    .card{padding:22px 20px;}
+    nav .wrap.nav-structured{flex-direction:column;gap:8px;padding-top:10px;padding-bottom:10px;}
+    .nav-group{grid-template-columns:1fr;gap:7px;}
+    .nav-sub{padding-left:30px;}
+    section{scroll-margin-top:224px;}
+  }
+  @media(max-width:560px){
+    .nav-sub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding-left:0;}
+    .nav-sub a{text-align:center;white-space:normal;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding-bottom:0;">
+    <p class="kicker">REPORT CATEGORY · PROJECT BRIEFING</p>
+    <h1>汇报材料标题</h1>
+    <p>用一两句话概括报告主旨，说明为什么这件事重要、当前进展是什么，以及读者应该带走什么判断。</p>
+    <div class="meta">
+      <span class="pill">核心主题</span>
+      <span class="pill">阶段进展</span>
+      <span class="pill">关键指标</span>
+      <span class="pill">后续路线</span>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap nav-structured">
+    <a class="nav-phase" href="#overview"><span class="nav-index">01</span><span>核心结论</span></a>
+    <div class="nav-group" aria-label="阶段导航">
+      <a class="nav-phase-title" href="#phase"><span class="nav-index">02</span><span>阶段进展</span></a>
+      <div class="nav-sub">
+        <a href="#architecture">流程架构</a>
+        <a href="#evidence">关键证据</a>
+        <a href="#output">产出结果</a>
+      </div>
+    </div>
+    <a class="nav-phase" href="#roadmap"><span class="nav-index">03</span><span>后续路线</span></a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <section id="overview">
+    <div class="sec-head"><span class="no">01</span><h2>核心结论</h2></div>
+    <p class="lead">先给出总判断，再展开支撑依据。把最重要的变化、能力或风险用<span class="hl">蓝色重点</span>标出。</p>
+    <div class="card">
+      <div class="two-col">
+        <div>
+          <p class="section-kicker">THE THESIS</p>
+          <h3>一句话标题说明核心变化</h3>
+          <p>这里放 2-3 句正文，说明项目从什么状态走向什么状态，以及这种变化带来的价值。</p>
+          <div class="point-list">
+            <div class="point"><b>维度一：</b>说明变化前后对比。</div>
+            <div class="point"><b>维度二：</b>说明成本、效率或质量收益。</div>
+            <div class="point"><b>维度三：</b>说明组织方式或能力沉淀。</div>
+          </div>
+        </div>
+        <div class="shot">
+          <div class="media-placeholder">16:9 主视觉或架构图</div>
+          <div class="cap">图片说明 · 点击放大</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="phase">
+    <div class="sec-head"><span class="no">02</span><h2>阶段进展</h2></div>
+    <p class="lead">说明当前阶段已经完成什么，哪些还只是下一步规划。</p>
+    <div class="card">
+      <div class="kpis">
+        <div class="kpi"><b>指标 A</b><span>简短解释</span></div>
+        <div class="kpi"><b>指标 B</b><span>简短解释</span></div>
+        <div class="kpi"><b>指标 C</b><span>简短解释</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="phase-sub">
+    <div class="sec-head"><span class="no">2.1</span><h2>流程架构</h2></div>
+    <div class="card">
+      <h3 class="subtle-title">关键流程</h3>
+      <div class="flow">
+        <span class="step">步骤一</span><span class="arrow">→</span>
+        <span class="step">步骤二</span><span class="arrow">→</span>
+        <span class="step">步骤三</span><span class="arrow">→</span>
+        <span class="step final">结果产出</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="evidence" class="phase-sub">
+    <div class="sec-head"><span class="no">2.2</span><h2>关键证据</h2></div>
+    <div class="card">
+      <h3 class="subtle-title">对比表</h3>
+      <div class="table-wrap">
+        <table class="compare">
+          <thead><tr><th>维度</th><th>当前状态</th><th>目标状态</th></tr></thead>
+          <tbody>
+            <tr><td>效率</td><td>填写当前描述</td><td>填写目标描述</td></tr>
+            <tr><td>质量</td><td>填写当前描述</td><td>填写目标描述</td></tr>
+            <tr><td>沉淀</td><td>填写当前描述</td><td>填写目标描述</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="output" class="phase-sub">
+    <div class="sec-head"><span class="no">2.3</span><h2>产出结果</h2></div>
+    <div class="card">
+      <div class="notice">这里放实验口径、数据限制或风险提示。</div>
+      <div class="shot carousel" data-caps='["截图占位一","截图占位二"]'>
+        <div class="slides">
+          <img class="slide active" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23e7f0ff'/%3E%3C/svg%3E" alt="截图占位一" />
+          <img class="slide" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23f7fbff'/%3E%3C/svg%3E" alt="截图占位二" />
+        </div>
+        <button class="cnav prev" aria-label="上一张">‹</button>
+        <button class="cnav next" aria-label="下一张">›</button>
+        <div class="cap"><span class="cap-text">截图占位一</span><span class="dots"><i class="dot active"></i><i class="dot"></i></span> · 点击放大</div>
+      </div>
+      <details class="report-raw">
+        <summary>展开查看原始材料</summary>
+        <div class="raw-body">
+          <p>这里放原始报告、日志摘要或长文本材料。</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="sec-head"><span class="no">03</span><h2>后续路线</h2></div>
+    <p class="lead">说明下一阶段的演进方向、关键机制和治理边界。</p>
+    <div class="card">
+      <div class="arena-flow">
+        <span class="step">输入</span><span class="arrow">→</span>
+        <span class="step">处理</span><span class="arrow">→</span>
+        <span class="step">评估</span><span class="arrow">→</span>
+        <span class="step final">沉淀</span>
+      </div>
+      <div class="grid-3">
+        <div class="item"><b>方向一</b><p>说明一个具体演进方向。</p></div>
+        <div class="item"><b>方向二</b><p>说明一个具体演进方向。</p></div>
+        <div class="item"><b>方向三</b><p>说明一个具体演进方向。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>汇报材料 · 图片资产由本地 <code>assets/</code> 目录引用</footer>
+</div>
+
+<div id="lightbox" class="lightbox"><span class="hint">点击任意处关闭 · Esc</span><img src="" alt="放大预览" /></div>
+<script>
+(function(){
+  document.querySelectorAll('.carousel').forEach(function(c){
+    var slides=c.querySelectorAll('.slide'), dots=c.querySelectorAll('.dot');
+    var capText=c.querySelector('.cap-text');
+    var caps=[]; try{ caps=JSON.parse(c.getAttribute('data-caps')||'[]'); }catch(e){}
+    var idx=0;
+    function show(i){
+      if(!slides.length) return;
+      idx=(i+slides.length)%slides.length;
+      slides.forEach(function(s,k){ s.classList.toggle('active',k===idx); });
+      dots.forEach(function(d,k){ d.classList.toggle('active',k===idx); });
+      if(capText&&caps[idx]) capText.textContent=caps[idx];
+    }
+    var prev=c.querySelector('.prev'), next=c.querySelector('.next');
+    if(prev) prev.addEventListener('click',function(e){ e.stopPropagation(); show(idx-1); });
+    if(next) next.addEventListener('click',function(e){ e.stopPropagation(); show(idx+1); });
+    show(0);
+  });
+
+  var lightbox=document.getElementById('lightbox');
+  if(!lightbox) return;
+  var lightImg=lightbox.querySelector('img');
+  document.querySelectorAll('.shot img').forEach(function(img){
+    img.addEventListener('click',function(){
+      lightImg.src=img.currentSrc || img.src;
+      lightbox.classList.add('open');
+    });
+  });
+  lightbox.addEventListener('click',function(){ lightbox.classList.remove('open'); lightImg.src=''; });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape') lightbox.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>

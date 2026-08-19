@@ -1,0 +1,4 @@
+interface:
+  display_name: "HTML Report Builder"
+  short_description: "Create polished HTML report pages in Classic Enterprise or Modern SaaS styles"
+  default_prompt: "Use $html-report-builder to create a polished HTML report page from my source material or outline."

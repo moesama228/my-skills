@@ -45,6 +45,10 @@ Playground 是孵化分类，不是永久的杂项分类。当其中至少 3 个
 
 - [`commit-plus`](skills/engineering/commit-plus/SKILL.md)：安全、原子化地检查、分组并提交 Git 变更，同时保留范围外的本地工作。
 
+### Frontend
+
+- [`html-report-builder`](skills/frontend/html-report-builder/SKILL.md)：将提纲、调研材料、截图和指标整理为可分享的静态 HTML 报告，支持企业经典与现代 SaaS 两种视觉风格。
+
 ### Playground
 
 - [`fun-fact`](skills/playground/fun-fact/SKILL.md)：介绍一条简短可靠、附带原理解释的冷知识，并在用户需要时查证来源。

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>报告标题 · 项目汇报</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: '#09090b',
+          surface: '#111111',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .slide { display: none; }
+  .slide.active { display: block; }
+  /* Row accordion for comparison table */
+  .accordion-row { cursor: pointer; }
+  .accordion-row:hover { background-color: #f9fafb; }
+  .accordion-chevron { transition: transform 0.3s ease; flex-shrink: 0; }
+  .accordion-row.expanded .accordion-chevron { transform: rotate(90deg); }
+  .accordion-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.35s ease; }
+  .accordion-row.expanded .accordion-detail { grid-template-rows: 1fr; }
+  .accordion-detail > div { overflow: hidden; }
+  .compare.saas-table thead th,
+  .compare.saas-table tbody td { padding: 0.625rem 1rem; }
+  .compare.saas-table tbody td:first-child { white-space: nowrap; }
+
+  /* SaaS-style tables */
+  .saas-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .saas-table thead th { background-color: rgba(249,250,251,0.5); text-align: left; padding: 1rem 1.5rem; font-size: 0.75rem; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #f3f4f6; }
+  .saas-table tbody tr { border-bottom: 1px solid #f3f4f6; transition: background-color 150ms; }
+  .saas-table tbody tr:last-child { border-bottom: none; }
+  .saas-table tbody tr:hover { background-color: rgba(249,250,251,0.8); }
+  .saas-table tbody td { padding: 1rem 1.5rem; color: #6b7280; }
+  .saas-table tbody td:first-child { font-weight: 500; color: #111827; }
+
+  /* Media wrappers */
+  .media-wrapper { position: relative; border-radius: 1rem; overflow: hidden; background-color: #fff; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04); }
+
+  /* Scroll-aware navbar */
+  .site-nav { transition: background-color .3s, border-color .3s, color .3s; backdrop-filter: blur(12px); }
+  .site-nav.nav-dark { background-color: rgba(0,0,0,0.2); border-bottom-color: rgba(255,255,255,0.1); }
+  .site-nav.nav-light { background-color: rgba(255,255,255,0.7); border-bottom-color: #e5e7eb; }
+  .site-nav .nav-link { transition: color .3s, background-color .3s; }
+  .site-nav.nav-dark .nav-link { color: rgba(255,255,255,0.7); }
+  .site-nav.nav-dark .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.05); }
+  .site-nav.nav-light .nav-link { color: #4b5563; }
+  .site-nav.nav-light .nav-link:hover { color: #000; background-color: rgba(0,0,0,0.04); }
+  .site-nav .nav-chevron { transition: color .3s; }
+  .site-nav.nav-dark .nav-chevron { color: rgba(255,255,255,0.5); }
+  .site-nav.nav-dark .nav-link:hover .nav-chevron { color: rgba(255,255,255,0.8); }
+  .site-nav.nav-light .nav-chevron { color: #9ca3af; }
+  .site-nav.nav-light .nav-link:hover .nav-chevron { color: #4b5563; }
+  .site-nav .brand-text { transition: color .3s; }
+  .site-nav.nav-dark .brand-text { color: #f4f4f5; }
+  .site-nav.nav-light .brand-text { color: #111827; }
+  .site-nav .brand-pill { transition: all .3s; }
+  .site-nav.nav-dark .brand-pill { background-color: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2); }
+  .site-nav.nav-light .brand-pill { background-color: #f3f4f6; color: #1f2937; border-color: transparent; }
+  .site-nav .nav-cta { transition: background-color .3s, color .3s, transform .15s; }
+  .site-nav.nav-dark .nav-cta { background-color: rgba(255,255,255,0.9); color: #000; }
+  .site-nav.nav-dark .nav-cta:hover { background-color: #fff; }
+  .site-nav.nav-light .nav-cta { background-color: #111827; color: #fff; }
+  .site-nav.nav-light .nav-cta:hover { background-color: #000; }
+  .site-nav .dropdown { transition: opacity .2s, transform .2s, visibility .2s; }
+  .site-nav.nav-dark .dropdown { background-color: rgba(17,17,17,0.92); border-color: rgba(255,255,255,0.1); }
+  .site-nav.nav-dark .dropdown a { color: rgba(255,255,255,0.7); }
+  .site-nav.nav-dark .dropdown a:hover { color: #fff; background-color: rgba(255,255,255,0.05); }
+  .site-nav.nav-light .dropdown { background-color: rgba(255,255,255,0.92); border-color: #e5e7eb; }
+  .site-nav.nav-light .dropdown a { color: #4b5563; }
+  .site-nav.nav-light .dropdown a:hover { color: #000; background-color: #f3f4f6; }
+
+  /* Scroll-aware banner */
+  .banner { transition: background-color .3s, border-color .3s, color .3s; backdrop-filter: blur(12px); }
+  .banner.banner-dark { background-color: rgba(0,0,0,0.1); border-bottom-color: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+  .banner.banner-light { background-color: rgba(255,255,255,0.6); border-bottom-color: #e5e7eb; color: #1f2937; }
+
+  /* Section reveal animations */
+  .section-reveal { position: relative; opacity: 0; transform: translateY(28px); transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1); }
+  .section-reveal.is-visible { opacity: 1; transform: translateY(0); }
+  .section-divider { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent); transition: width 0.9s cubic-bezier(0.16,1,0.3,1); }
+  .section-reveal.is-visible .section-divider { width: 100%; }
+  .text-pretty { text-wrap: pretty; }
+
+  /* Instant reveal helper: used when a section re-enters from below so it appears without animating backwards */
+  .reveal-instant,
+  .reveal-instant .section-divider { transition: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .section-reveal,
+    .accordion-chevron,
+    .accordion-detail,
+    .site-nav,
+    .banner,
+    .site-nav .nav-link,
+    .site-nav .nav-chevron,
+    .site-nav .brand-text,
+    .site-nav .brand-pill,
+    .site-nav .dropdown { transition: none !important; }
+  }
+</style>
+<noscript><style>.section-reveal { opacity: 1 !important; transform: none !important; } .section-reveal .section-divider { width: 100% !important; }</style></noscript>
+</head>
+<body class="bg-bg text-zinc-100 antialiased selection:bg-blue-500/30">
+<!-- Global Banner -->
+<div class="bg-blue-600/20 backdrop-blur-md border-b border-blue-500/20 text-blue-100 text-sm py-2.5 px-4 flex justify-center items-center gap-3 relative z-50">
+<span class="flex items-center gap-2">[顶部通知文案]</span>
+<a class="font-bold text-white hover:underline ml-2" href="#video">查看详情 →</a>
+</div>
+<!-- Nav -->
+<nav class="site-nav nav-dark sticky top-0 inset-x-0 z-40 border-b">
+<div class="max-w-7xl mx-auto px-6 h-[73px] flex items-center justify-between">
+<a aria-label="回到顶部" class="flex items-center gap-2.5 group" href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;">
+<span class="brand-pill inline-flex items-center h-7 px-2.5 rounded-full border text-xs font-bold tracking-tight">[强调文本]</span>
+<span class="brand-text text-sm font-semibold tracking-tight">[说明]</span>
+</a>
+<ul class="hidden lg:flex items-center gap-1">
+<li><a class="nav-link px-3.5 py-2 rounded-lg text-sm font-medium" href="#summary">[链接文本]</a></li>
+<li class="group relative">
+<a class="nav-link flex items-center gap-1 px-3.5 py-2 rounded-lg text-sm font-medium" href="#assets">[链接文本]<svg class="nav-chevron w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</a>
+<div class="dropdown absolute top-full left-1/2 -translate-x-1/2 mt-2 w-44 rounded-xl border p-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50">
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#graph">[链接文本]</a>
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#compound">[链接文本]</a>
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#maintenance">[链接文本]</a>
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#comparison">[链接文本]</a>
+</div>
+</li>
+<li class="group relative">
+<a class="nav-link flex items-center gap-1 px-3.5 py-2 rounded-lg text-sm font-medium" href="#analysis">[链接文本]<svg class="nav-chevron w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+</a>
+<div class="dropdown absolute top-full left-1/2 -translate-x-1/2 mt-2 w-40 rounded-xl border p-1.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50">
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#workflow">[链接文本]</a>
+<a class="block px-3 py-2 rounded-lg text-sm transition-colors duration-200" href="#video">[链接文本]</a>
+</div>
+</li>
+<li><a class="nav-link px-3.5 py-2 rounded-lg text-sm font-medium" href="#outlook">[链接文本]</a></li>
+<li><a class="ml-2 inline-flex items-center h-8 px-4 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all duration-200" href="#video">[链接文本]</a></li>
+</ul>
+</div>
+</nav>
+<!-- Hero -->
+<section class="hero relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden bg-[#0A0E17] pt-12 pb-32 font-sans">
+<!-- 若隐若现的科技风网格：64px fixed 线格，与正文区保持衔接，但透明度仅 3%，不抢文字风头 -->
+<div class="absolute inset-0 z-0 opacity-[0.03]" style="background-image: linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px); background-size: 64px 64px; background-attachment: fixed;"></div>
+<!-- 环境光晕 -->
+<div class="absolute top-1/4 left-1/3 w-[400px] h-[400px] bg-blue-600/30 rounded-full blur-[120px] -translate-x-1/2 pointer-events-none mix-blend-screen"></div>
+<div class="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[140px] translate-x-1/2 pointer-events-none mix-blend-screen"></div>
+<!-- 内容层 -->
+<div class="relative z-10 w-full max-w-4xl mx-auto px-6 flex flex-col items-center text-center mt-8">
+<!-- Tag -->
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/5 border border-white/5 text-gray-400 text-xs font-medium tracking-wider uppercase mb-8">[说明]</div>
+<!-- H1 标题 -->
+<h1 class="text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tight text-white mb-8 leading-[1.1]">[主标题]<br class="hidden md:block"/>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500">[主标题]</span>
+</h1>
+<!-- 副标题 -->
+<p class="text-lg md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed mb-12 font-light">[段落说明：补充论点与数据支撑。]<br class="hidden md:block"/>[段落说明：补充论点与数据支撑。]</p>
+<!-- 按钮组 -->
+<div class="flex flex-col sm:flex-row items-center gap-5">
+<a class="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-gray-900 text-lg font-bold hover:bg-gray-100 hover:scale-[1.02] active:scale-95 transition-all duration-200 shadow-[0_0_30px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2" href="#video">[链接文本]<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</a>
+<a class="w-full sm:w-auto px-8 py-4 rounded-xl bg-transparent border-2 border-gray-700 text-gray-300 text-lg font-medium hover:border-gray-500 hover:text-white transition-all duration-200" href="#assets">[链接文本]</a>
+</div>
+</div>
+<!-- 底部渐变遮罩 -->
+<div class="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#FAFAFA] via-[#FAFAFA]/80 to-transparent z-20 pointer-events-none"></div>
+</section>
+<!-- 01 / 章节一 -->
+<section class="section-reveal relative py-16 bg-slate-50 text-slate-900 border-b border-slate-200 overflow-hidden" id="summary">
+<div class="section-divider"></div>
+<!-- 大网格背景：与 Hero 共用 64px fixed 线格，保证跨区块连续 -->
+<div class="absolute inset-0 z-0 opacity-[0.2]" style="background-image: linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px); background-size: 64px 64px; background-attachment: fixed;"></div>
+<div class="relative z-10 max-w-5xl mx-auto px-6">
+<!-- 1. 紧凑型头部标题 -->
+<div class="mb-10 max-w-3xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-white border border-slate-200 shadow-sm mb-5">
+<div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+<span class="text-xs font-bold tracking-widest text-slate-600 uppercase">[序号 / 章节名]</span>
+</div>
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">[章节标题]<span class="text-blue-700">[高亮短语]</span>
+</h2>
+<p class="text-base text-slate-600 leading-relaxed max-w-3xl text-pretty">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<!-- 2. 传统模式困境 -->
+<div class="mb-8 bg-slate-200/40 backdrop-blur-sm rounded-xl p-6 md:p-8 flex flex-col md:flex-row gap-5 items-start md:items-center border border-slate-200/60 shadow-sm relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-slate-300 group-hover:bg-slate-400 transition-colors duration-200"></div>
+<div class="w-12 h-12 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+<div class="flex-1">
+<h3 class="text-base font-bold text-slate-800 mb-2">[小标题]</h3>
+<p class="text-sm text-slate-600 leading-relaxed">[段落说明：补充论点与数据支撑。]<strong class="text-slate-900 font-medium ml-1">[重点]</strong>
+</p>
+</div>
+</div>
+<!-- 3. 三大支柱 -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+<div class="bg-slate-50/80 border-b border-slate-100 px-6 py-3">
+<span class="text-xs font-bold text-slate-500 tracking-wider uppercase">[标签]</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+<div class="p-8 hover:bg-slate-50/50 transition-colors duration-200">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-5 border border-blue-100/50">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<div class="p-8 hover:bg-slate-50/50 transition-colors duration-200">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-5 border border-blue-100/50">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<div class="p-8 hover:bg-slate-50/50 transition-colors duration-200">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-5 border border-blue-100/50">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+</div>
+</div>
+<!-- 4. 业务价值 Metrics -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+<div class="p-8 text-center flex flex-col items-center justify-center hover:bg-slate-50/50 transition-colors duration-200 group">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight group-hover:scale-105 transition-transform duration-300">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+<div class="p-8 text-center flex flex-col items-center justify-center bg-slate-50/40 hover:bg-slate-50/80 transition-colors duration-200 group">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight group-hover:scale-105 transition-transform duration-300">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+<div class="p-8 text-center flex flex-col items-center justify-center hover:bg-slate-50/50 transition-colors duration-200 group">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight group-hover:scale-105 transition-transform duration-300">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 02 / 章节二 -->
+<section class="section-reveal relative py-16 bg-slate-50 text-slate-900 border-b border-slate-200 overflow-hidden" id="assets">
+<div class="section-divider"></div>
+<!-- 与 Hero / Section 1 对齐的 64px 线格 -->
+<div class="absolute inset-0 z-0 opacity-[0.2]" style="background-image: linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px); background-size: 64px 64px; background-attachment: fixed;"></div>
+<div class="relative z-10 max-w-5xl mx-auto px-6">
+<!-- 头部 -->
+<div class="mb-10 max-w-3xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-white border border-slate-200 shadow-sm mb-5">
+<div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+<span class="text-xs font-bold tracking-widest text-slate-600 uppercase">[序号 / 章节名]</span>
+</div>
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">[章节标题]<span class="text-blue-700">[高亮短语]</span>
+</h2>
+<p class="text-base text-slate-600 leading-relaxed max-w-3xl text-pretty">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<!-- 核心视觉锚点：关系网络演化 -->
+<div class="mb-16 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden relative group" id="graph">
+<!-- Mac 窗口顶栏 -->
+<div class="h-10 bg-slate-800/80 border-b border-slate-700 flex items-center px-4 gap-2">
+<div class="w-3 h-3 rounded-full bg-slate-600"></div>
+<div class="w-3 h-3 rounded-full bg-slate-600"></div>
+<div class="w-3 h-3 rounded-full bg-slate-600"></div>
+<div class="mx-auto text-xs font-medium text-slate-400 tracking-wider">[video_filename.mp4]</div>
+</div>
+<!-- 视频区 -->
+<div class="aspect-video bg-black relative flex items-center justify-center overflow-hidden">
+<video autoplay="" class="absolute inset-0 w-full h-full object-cover" loop="" muted="" playsinline="" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect width='1920' height='1080' fill='%230f172a'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23334155' font-size='64'%3E视频封面占位%3C/text%3E%3C/svg%3E">
+<source src="assets/video-placeholder.mp4" type="video/mp4"/>
+<source src="assets/video-placeholder.mp4" type="video/mp4"/>
+</video>
+<div class="absolute inset-0 bg-blue-500/10 mix-blend-screen pointer-events-none"></div>
+</div>
+</div>
+<!-- 图文解说：复利效应说明 -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center mb-16" id="compound">
+<div class="lg:col-span-5 order-2 lg:order-1">
+<div class="text-sm font-bold text-blue-600 tracking-widest uppercase mb-3">[小标题]</div>
+<h3 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-6">[小标题]</h3>
+<p class="text-sm text-slate-600 leading-relaxed mb-6">[段落说明：补充论点与数据支撑。]</p>
+<p class="text-sm font-medium text-slate-800 leading-relaxed mb-8 border-l-2 border-blue-600 pl-4">[段落说明：补充论点与数据支撑。]<span class="text-blue-700 font-bold">[强调文本]</span>
+</p>
+<div class="space-y-4">
+<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+<h4 class="text-sm font-bold text-slate-900 mb-1">[卡片标题]</h4>
+<p class="text-xs text-slate-500">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
+<h4 class="text-sm font-bold text-slate-900 mb-1">[卡片标题]</h4>
+<p class="text-xs text-slate-500">[段落说明：补充论点与数据支撑。]</p>
+</div>
+</div>
+</div>
+<div class="lg:col-span-7 order-1 lg:order-2">
+<div class="media-wrapper carousel" data-caps='["幻灯片 1", "幻灯片 2"]'>
+<div class="slides">
+<img alt="[图片描述]" class="slide active w-full cursor-zoom-in" loading="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='48'%3E16:9 占位图%3C/text%3E%3C/svg%3E"/>
+<img alt="[图片描述]" class="slide w-full cursor-zoom-in" loading="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='48'%3E16:9 占位图%3C/text%3E%3C/svg%3E"/>
+</div>
+<button aria-label="上一张" class="cnav prev absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-gray-200 bg-white/80 text-gray-800 flex items-center justify-center hover:bg-white transition duration-200">‹</button>
+<button aria-label="下一张" class="cnav next absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full border border-gray-200 bg-white/80 text-gray-800 flex items-center justify-center hover:bg-white transition duration-200">›</button>
+<div class="px-4 py-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-500 text-center"><span class="cap-text">[图片说明]</span><span class="dots inline-flex gap-1.5 align-middle mx-2"><i class="dot w-1.5 h-1.5 rounded-full bg-blue-500"></i><i class="dot w-1.5 h-1.5 rounded-full bg-gray-300"></i></span>[说明]</div>
+</div>
+</div>
+</div>
+<!-- 角色分工：三张身份牌 -->
+<div class="mb-16" id="maintenance">
+<div class="text-center mb-10 max-w-2xl mx-auto">
+<h3 class="text-2xl font-bold text-slate-900 mb-3">[小标题]</h3>
+<p class="text-sm text-slate-500">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<!-- 三张身份牌 Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- ================= 卡片 1: 人工角色 ================= -->
+<div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+<!-- 右上角水印 Logo：人 -->
+<div class="absolute top-6 right-6">
+<svg class="w-16 h-16 text-slate-100" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path>
+</svg>
+</div>
+<div class="relative z-10">
+<div class="text-sm font-bold tracking-widest text-slate-400 mb-4 uppercase">[小标题]</div>
+<h4 class="text-xl font-extrabold text-slate-900 mb-6">[卡片标题]</h4>
+<ul class="space-y-4 text-sm text-slate-600">
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3 mt-4 pt-5 border-t border-slate-100 text-slate-400 line-through"><svg class="w-5 h-5 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[已移除项]</li>
+</ul>
+</div>
+</div>
+<!-- ================= 卡片 2: 智能引擎 ================= -->
+<div class="bg-blue-50/60 p-8 rounded-2xl border border-blue-100 shadow-sm relative overflow-hidden">
+<!-- 右上角水印 Logo：智能引擎 -->
+<!-- 使用极浅的蓝白色 text-blue-100 融入背景 -->
+<div class="absolute top-6 right-6">
+<svg class="w-16 h-16 text-blue-200/50" fill="currentColor" viewbox="0 0 24 24">
+<path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"></path>
+</svg>
+</div>
+<div class="relative z-10">
+<div class="text-sm font-bold tracking-widest text-blue-400 mb-4 uppercase">[小标题]</div>
+<h4 class="text-xl font-extrabold text-blue-900 mb-6">[卡片标题]</h4>
+<ul class="space-y-4 text-sm text-slate-700">
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+</ul>
+</div>
+</div>
+<!-- ================= 卡片 3: 自动化校验机制 ================= -->
+<div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-sm relative overflow-hidden">
+<!-- 右上角水印 Logo：校验机制 -->
+<!-- 使用极暗的色号 text-slate-700 融入深色背景 -->
+<div class="absolute top-6 right-6">
+<svg class="w-16 h-16 text-slate-700/60" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"></path>
+</svg>
+</div>
+<div class="relative z-10">
+<div class="text-sm font-bold tracking-widest text-slate-400 mb-4 uppercase">[小标题]</div>
+<h4 class="text-xl font-extrabold text-white mb-6">[卡片标题]</h4>
+<ul class="space-y-4 text-sm text-slate-300">
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+<li class="flex items-center gap-3"><svg class="w-5 h-5 text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[列表项]</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<!-- 全景对比 -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" id="comparison">
+<div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
+<h3 class="text-lg font-bold text-slate-900">[小标题]</h3>
+<p class="text-xs text-slate-500 mt-1">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<div class="p-6 md:p-8">
+<table class="compare saas-table" id="comparisonTable">
+<thead>
+<tr>
+<th class="w-32">[单元格]</th>
+<th>[单元格]</th>
+<th>[单元格]</th>
+</tr>
+</thead>
+<tbody>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+<tr class="accordion-row">
+<td>
+<div class="flex items-start gap-2">
+<svg class="accordion-chevron w-4 h-4 mt-0.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="font-medium text-gray-900 whitespace-nowrap">[维度]</span>
+</div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+<td class="min-w-[220px]">
+<div class="font-medium text-gray-900">[单元格标题]</div>
+<div class="accordion-detail"><div><p class="pt-1 text-sm text-gray-500 leading-snug">[段落说明：补充论点与数据支撑。]</p></div></div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- 03 / 章节三 -->
+<section class="section-reveal relative py-16 bg-slate-50 text-slate-900 border-b border-slate-200 overflow-hidden" id="analysis">
+<div class="section-divider"></div>
+<!-- 与 Hero / Section 1 对齐的 64px 线格 -->
+<div class="absolute inset-0 z-0 opacity-[0.2]" style="background-image: linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px); background-size: 64px 64px; background-attachment: fixed;"></div>
+<div class="relative z-10 max-w-5xl mx-auto px-6">
+<!-- 头部 -->
+<div class="mb-10 max-w-3xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-white border border-slate-200 shadow-sm mb-5">
+<div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+<span class="text-xs font-bold tracking-widest text-slate-600 uppercase">[序号 / 章节名]</span>
+</div>
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">[章节标题]<span class="text-blue-700">[高亮短语]</span>
+</h2>
+<p class="text-base text-slate-600 leading-relaxed max-w-3xl text-pretty">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<!-- 破与立：Before & After -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-sm border border-slate-200 mb-16">
+<!-- Before -->
+<div class="bg-slate-100/80 p-8 md:p-10 border-b md:border-b-0 md:border-r border-slate-200">
+<div class="text-sm font-bold text-slate-500 tracking-wider uppercase mb-6 flex items-center gap-2">
+<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[小标题]</div>
+<ul class="space-y-6">
+<li>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-sm text-slate-500">[说明]</div>
+</li>
+<li>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-sm text-slate-500">[说明]</div>
+</li>
+</ul>
+</div>
+<!-- After -->
+<div class="bg-white p-8 md:p-10 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-10 -mt-10 transition-all duration-200 group-hover:bg-blue-100"></div>
+<div class="relative z-10">
+<div class="text-sm font-bold text-blue-600 tracking-wider uppercase mb-6 flex items-center gap-2">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>[小标题]</div>
+<ul class="space-y-6">
+<li>
+<div class="text-sm font-bold text-slate-900 mb-1">[小标题]</div>
+<div class="text-sm text-slate-600">[说明]</div>
+</li>
+<li>
+<div class="text-sm font-bold text-slate-900 mb-1">[小标题]</div>
+<div class="text-sm text-slate-600">[说明]</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- 工作流 + 交付物 Bento -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-16 flex flex-col lg:flex-row" id="workflow">
+<!-- 左侧：六步流程 -->
+<div class="lg:w-1/3 p-8 border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-50/50">
+<h3 class="text-base font-bold text-slate-900 mb-6">[小标题]</h3>
+<div class="relative border-l-2 border-slate-200 ml-3 space-y-5">
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-blue-600 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+<div class="relative pl-6">
+<div class="absolute w-3 h-3 bg-slate-300 rounded-full -left-[7px] top-1.5 ring-4 ring-white"></div>
+<div class="text-sm font-bold text-slate-800">[小标题]</div>
+<div class="text-xs text-slate-500 mt-1">[说明]</div>
+</div>
+</div>
+</div>
+<!-- 右侧：交付物 -->
+<div class="lg:w-2/3 p-8">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-base font-bold text-slate-900">[小标题]</h3>
+<span class="px-2.5 py-1 rounded bg-blue-50 text-blue-600 text-xs font-bold">[强调文本]</span>
+</div>
+<div class="rounded-xl border border-slate-200 overflow-hidden shadow-sm mb-6 bg-slate-100">
+<img alt="[图片描述]" class="shot w-full h-auto object-cover cursor-zoom-in hover:opacity-95 transition-opacity duration-200" loading="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='48'%3E16:9 占位图%3C/text%3E%3C/svg%3E"/>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600 bg-slate-50">[说明]</span>
+<span class="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600 bg-slate-50">[说明]</span>
+<span class="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600 bg-slate-50">[说明]</span>
+<span class="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600 bg-slate-50">[说明]</span>
+<span class="px-3 py-1.5 rounded-md border border-slate-200 text-xs text-slate-600 bg-slate-50">[说明]</span>
+<span class="px-3 py-1.5 rounded-md border border-blue-100 text-xs text-blue-600 font-medium bg-blue-50">[说明]</span>
+</div>
+</div>
+</div>
+<!-- Demo 视频 -->
+<div class="mb-8" id="video">
+<div class="text-center mb-8">
+<h3 class="text-2xl font-extrabold text-slate-900 mb-2">[小标题]</h3>
+<p class="text-sm text-slate-500">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<div class="bg-slate-900 p-2 md:p-4 rounded-3xl shadow-2xl border border-slate-800">
+<div class="aspect-video bg-black rounded-xl overflow-hidden relative border border-slate-700/50">
+<video class="w-full h-full bg-black" controls="" id="demoVideo" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect width='1920' height='1080' fill='%230f172a'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23334155' font-size='64'%3E视频封面占位%3C/text%3E%3C/svg%3E" preload="metadata" src="assets/video-placeholder.mp4"></video>
+</div>
+<div class="flex items-center gap-2 px-2 pt-3 md:px-0 md:pt-4">
+<button class="speed-btn active px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/15 text-blue-300 text-sm font-medium transition-colors duration-200" data-rate="1">1x</button>
+<button class="speed-btn px-3.5 py-1.5 rounded-full border border-gray-700 bg-gray-800 text-zinc-300 text-sm font-medium hover:bg-gray-700 transition-colors duration-200" data-rate="1.5">1.5x</button>
+<button class="speed-btn px-3.5 py-1.5 rounded-full border border-gray-700 bg-gray-800 text-zinc-300 text-sm font-medium hover:bg-gray-700 transition-colors duration-200" data-rate="2">2x</button>
+<span class="ml-auto text-xs text-zinc-500">[说明]</span>
+</div>
+</div>
+</div>
+<!-- 实测成果数据 -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+<div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+<div class="p-8 text-center flex flex-col items-center justify-center hover:bg-slate-50/50 transition-colors duration-200">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+<div class="p-8 text-center flex flex-col items-center justify-center bg-slate-50/40 hover:bg-slate-50/80 transition-colors duration-200">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+<div class="p-8 text-center flex flex-col items-center justify-center hover:bg-slate-50/50 transition-colors duration-200">
+<div class="text-4xl font-black text-blue-600 mb-2 tracking-tight">[数值]</div>
+<div class="text-sm font-bold text-slate-800 mb-1">[小标题]</div>
+<div class="text-xs text-slate-500">[说明]</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 04 / 章节四 -->
+<section class="section-reveal relative py-16 bg-slate-50 text-slate-900 border-b border-slate-200 overflow-hidden" id="outlook">
+<div class="section-divider"></div>
+<!-- 与 Hero / Section 1 对齐的 64px 线格 -->
+<div class="absolute inset-0 z-0 opacity-[0.2]" style="background-image: linear-gradient(to right, #cbd5e1 1px, transparent 1px), linear-gradient(to bottom, #cbd5e1 1px, transparent 1px); background-size: 64px 64px; background-attachment: fixed;"></div>
+<div class="relative z-10 max-w-5xl mx-auto px-6">
+<!-- 标题区 -->
+<div class="mb-10 max-w-3xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-white border border-slate-200 shadow-sm mb-5">
+<div class="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+<span class="text-xs font-bold tracking-widest text-slate-600 uppercase">[序号 / 章节名]</span>
+</div>
+<h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">[章节标题]<span class="text-blue-700">[高亮短语]</span>
+</h2>
+<p class="text-base text-slate-600 leading-relaxed max-w-3xl text-pretty">[段落说明：补充论点与数据支撑。]</p>
+</div>
+<!-- 核心增量信息：落地规划蓝图 -->
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 md:p-12">
+<div class="flex flex-col lg:flex-row gap-12 lg:gap-20">
+<!-- 左侧：愿景描述 + CTA -->
+<div class="lg:w-1/3">
+<div class="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-6 border border-blue-100/50">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path></svg>
+</div>
+<h3 class="text-2xl font-extrabold text-slate-900 mb-4">[小标题]</h3>
+<p class="text-sm text-slate-600 leading-relaxed mb-6">[段落说明：补充论点与数据支撑。]</p>
+<button class="px-6 py-3 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors duration-200 shadow-md w-full sm:w-auto cursor-pointer" onclick="alert('[CTA 提示文案]')" type="button">[按钮文案]</button>
+</div>
+<!-- 右侧：结构化时间轴 -->
+<div class="lg:w-2/3 relative">
+<!-- 背景连接线 -->
+<div class="absolute left-6 top-6 bottom-6 w-px bg-slate-100 -ml-px"></div>
+<div class="space-y-6 relative">
+<!-- Step 1 -->
+<div class="flex items-start group">
+<div class="w-12 h-12 rounded-full bg-slate-50 border-2 border-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg relative z-10 group-hover:border-blue-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors duration-200">[说明]</div>
+<div class="ml-6 flex-1 bg-white p-6 rounded-xl border border-slate-100 shadow-sm group-hover:border-blue-100 group-hover:shadow-md transition-all duration-200">
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex items-start group">
+<div class="w-12 h-12 rounded-full bg-slate-50 border-2 border-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg relative z-10 group-hover:border-blue-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors duration-200">[说明]</div>
+<div class="ml-6 flex-1 bg-white p-6 rounded-xl border border-slate-100 shadow-sm group-hover:border-blue-100 group-hover:shadow-md transition-all duration-200">
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="flex items-start group">
+<div class="w-12 h-12 rounded-full bg-slate-50 border-2 border-slate-200 text-slate-500 flex items-center justify-center font-bold text-lg relative z-10 group-hover:border-blue-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors duration-200">[说明]</div>
+<div class="ml-6 flex-1 bg-white p-6 rounded-xl border border-slate-100 shadow-sm group-hover:border-blue-100 group-hover:shadow-md transition-all duration-200">
+<h4 class="text-base font-bold text-slate-900 mb-2">[卡片标题]</h4>
+<p class="text-sm text-slate-500 leading-relaxed">[段落说明：补充论点与数据支撑。]</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<footer class="border-t border-gray-200 py-12 bg-white">[页脚文案]</footer>
+<!-- Lightbox -->
+<div class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/92 p-10 cursor-zoom-out" id="lightbox">
+<span class="fixed top-5 right-6 text-sm text-zinc-500">[说明]</span>
+<img alt="[图片描述]" class="max-w-[95vw] max-h-[92vh] rounded-2xl shadow-2xl" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'%3E%3Crect width='1600' height='900' fill='%23f1f5f9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2394a3b8' font-size='48'%3E16:9 占位图%3C/text%3E%3C/svg%3E"/>
+</div>
+<script>
+(function(){
+  // Scroll-aware navbar & banner
+  const nav = document.querySelector('.site-nav');
+  const banner = document.querySelector('.banner');
+  const hero = document.querySelector('.hero');
+  function updateNav() {
+    if (!hero) return;
+    const heroBottom = hero.getBoundingClientRect().bottom;
+    const navHeight = nav ? nav.offsetHeight : 73;
+    const dark = heroBottom > navHeight;
+    if (dark) {
+      nav.classList.add('nav-dark'); nav.classList.remove('nav-light');
+      if (banner) { banner.classList.add('banner-dark'); banner.classList.remove('banner-light'); }
+    } else {
+      nav.classList.add('nav-light'); nav.classList.remove('nav-dark');
+      if (banner) { banner.classList.add('banner-light'); banner.classList.remove('banner-dark'); }
+    }
+  }
+  window.addEventListener('scroll', updateNav, { passive: true });
+  window.addEventListener('resize', updateNav);
+  updateNav();
+
+  // Carousel
+  document.querySelectorAll('.carousel').forEach(function(c){
+    var slides=c.querySelectorAll('.slide'), dots=c.querySelectorAll('.dot');
+    var capText=c.querySelector('.cap-text');
+    var caps=[]; try{ caps=JSON.parse(c.getAttribute('data-caps')||'[]'); }catch(e){}
+    var idx=0;
+    function show(i){
+      if(!slides.length) return;
+      idx=(i+slides.length)%slides.length;
+      slides.forEach(function(s,k){ s.classList.toggle('active',k===idx); });
+      dots.forEach(function(d,k){ d.classList.toggle('bg-blue-500',k===idx); d.classList.toggle('bg-gray-300',k!==idx); });
+      if(capText&&caps[idx]) capText.textContent=caps[idx];
+    }
+    var prev=c.querySelector('.prev'), next=c.querySelector('.next');
+    if(prev) prev.addEventListener('click',function(e){ e.stopPropagation(); show(idx-1); });
+    if(next) next.addEventListener('click',function(e){ e.stopPropagation(); show(idx+1); });
+    show(0);
+  });
+
+  // Lightbox
+  var lightbox=document.getElementById('lightbox');
+  if(lightbox){
+    var lightImg=lightbox.querySelector('img');
+    document.querySelectorAll('.shot img, .carousel img').forEach(function(img){
+      img.addEventListener('click',function(){
+        lightImg.src=img.currentSrc || img.src;
+        lightbox.classList.remove('hidden');
+        lightbox.classList.add('flex');
+      });
+    });
+    lightbox.addEventListener('click',function(){ lightbox.classList.add('hidden'); lightbox.classList.remove('flex'); lightImg.src=''; });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ lightbox.classList.add('hidden'); lightbox.classList.remove('flex'); } });
+  }
+
+  // Video speed
+  var video=document.getElementById('demoVideo');
+  if(video){
+    document.querySelectorAll('.speed-btn').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var rate=parseFloat(btn.getAttribute('data-rate'));
+        video.playbackRate=rate;
+        document.querySelectorAll('.speed-btn').forEach(function(b){
+          b.classList.remove('bg-blue-500/15','text-blue-300','border-blue-500/30');
+          b.classList.add('bg-gray-800','text-zinc-300','border-gray-700');
+        });
+        btn.classList.remove('bg-gray-800','text-zinc-300','border-gray-700');
+        btn.classList.add('bg-blue-500/15','text-blue-300','border-blue-500/30');
+      });
+    });
+  }
+
+  // Section reveal + divider animation
+  // First view: animate. After leaving viewport, reset. On re-entry, only animate when coming from above;
+  // when re-entering from below, show instantly so the page doesn't feel like it's animating backwards.
+  var revealStates = new WeakMap();
+  var revealObserver = new IntersectionObserver(function(entries){
+    var vh = window.innerHeight;
+    entries.forEach(function(entry){
+      var el = entry.target;
+      var rect = entry.boundingClientRect;
+      var state = revealStates.get(el) || { seen: false, last: null };
+      var above = rect.bottom <= 0;
+      var below = rect.top >= vh;
+
+      if (entry.isIntersecting) {
+        var shouldAnimate = !state.seen || state.last === 'above';
+        if (shouldAnimate) {
+          el.classList.add('is-visible');
+        } else {
+          el.classList.add('reveal-instant');
+          el.classList.add('is-visible');
+          void el.offsetHeight; // force reflow before re-enabling transitions
+          el.classList.remove('reveal-instant');
+        }
+        state.seen = true;
+        state.last = 'visible';
+      } else {
+        if (above || below) {
+          el.classList.remove('is-visible');
+          state.last = above ? 'above' : 'below';
+        }
+      }
+      revealStates.set(el, state);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.section-reveal').forEach(function(s){
+    revealStates.set(s, { seen: false, last: null });
+    revealObserver.observe(s);
+  });
+
+  // Row accordion for comparison table
+  document.querySelectorAll('#comparisonTable .accordion-row').forEach(function(row){
+    row.addEventListener('click',function(){
+      row.classList.toggle('expanded');
+    });
+  });
+})();
+</script>
+</body>
+</html>
