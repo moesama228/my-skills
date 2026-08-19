@@ -1,0 +1,4 @@
+interface:
+  display_name: "PDF TOC Links"
+  short_description: "Bookmarks and clickable PDF TOCs"
+  default_prompt: "Use $pdf-toc-links to add sidebar bookmarks and clickable TOC-page links to a PDF."

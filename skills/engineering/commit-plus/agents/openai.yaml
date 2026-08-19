@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit Plus"
+  short_description: "Create safe, atomic Git commits"
+  default_prompt: "Use $commit-plus to review my changes and create a safe, atomic commit."

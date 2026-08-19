@@ -38,8 +38,14 @@ npx skills@latest add moesama228/my-skills --global
 
 ## 可用技能
 
+### Engineering
+
+- [`commit-plus`](skills/engineering/commit-plus/SKILL.md)：安全、原子化地检查、分组并提交 Git 变更，同时保留范围外的本地工作。
+
 ### Productivity
 
+- [`markdown-document-export`](skills/productivity/markdown-document-export/SKILL.md)：将 Markdown 导出为精美的 PDF 或 Word 文档，并保留 Mermaid、本地图片和样式。
+- [`pdf-toc-links`](skills/productivity/pdf-toc-links/SKILL.md)：为文本型或扫描型 PDF 添加侧边栏书签和可点击的目录页链接。
 - [`skill-creator-portable`](skills/productivity/skill-creator-portable/SKILL.md)：创建、更新和审查符合 Agent Skills 规范的可移植技能，并可选择生成 OpenAI 元数据适配层。
 
 ## 目录约定

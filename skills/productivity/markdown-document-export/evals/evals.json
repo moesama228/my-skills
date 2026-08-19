@@ -1,0 +1,45 @@
+{
+  "skill_name": "markdown-document-export",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把 examples/sample-export.md 导出成最终文档，默认使用 PDF 输出，保留所有 Mermaid 图和本地图片。",
+      "expected_output": "生成一个 .pdf 文件，Mermaid 图已渲染为图片，本地图片已嵌入文档，表格有边框且表头有浅灰底。",
+      "files": [
+        "examples/sample-export.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把 examples/sample-export.md 明确导出成 Word 文档，保留现有 Word 表格样式增强。",
+      "expected_output": "生成一个 .docx 文件，Mermaid 图和本地图片已嵌入，表格保留边框、表头底色和表头加粗。",
+      "files": [
+        "examples/sample-export.md"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "把一个包含 Mermaid、fa:fa-* 图标和本地图片引用的 Markdown 样例分别导出为默认 PDF，并确认图和图片都保留。",
+      "expected_output": "生成一个 .pdf 文件，Font Awesome 图标在 Mermaid 图中正常显示，本地图片也成功嵌入。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "把这份 md 排版后导出成可以直接发客户的 PDF，图表和本地图片都要保留。",
+      "expected_output": "生成一个 .pdf 文件，输出适合分享或发送，Mermaid 图和本地图片被保留。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "把当前 Markdown 生成一个正式的汇报材料，输出 Word 版本，方便继续在 Office 里改。",
+      "expected_output": "生成一个 .docx 文件，适合继续编辑，保留 Mermaid 图、本地图片和表格样式。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "我想把这篇 markdown 打印出来，帮我生成可打印的 PDF 成品。",
+      "expected_output": "生成一个 .pdf 文件，适合打印，保留表格样式、Mermaid 图和本地资源。",
+      "files": []
+    }
+  ]
+}
