@@ -103,7 +103,13 @@ Normal mode fails on specification errors and reports quality warnings. Strict m
 
 Run every new or changed helper script on representative success and failure cases. If the official `skills-ref` tool is already available, use it as an additional conformance check; do not make it a runtime dependency.
 
-Structural validation does not prove that instructions produce good behavior. For complex or high-risk skills, test a realistic request in an isolated workspace when the environment supports that evaluation and the necessary authority exists. Revise only from observed failures.
+Structural validation does not prove that instructions produce good behavior.
+
+### Independent forward-testing
+
+For a new or substantially revised skill whose behavior is complex or high-risk, run an independent subagent on a realistic user request. Give the evaluator the completed skill and only the raw inputs needed for the task. Withhold the intended answer, suspected defect, proposed fix, and authoring conclusions unless the evaluation genuinely requires them.
+
+Use an isolated workspace and keep permissions, side effects, time, and cost within the available authority. Review the actual output and artifacts against the skill's success criteria, then make only narrow revisions supported by observed failures. Ordinary creation and small edits do not require this pass.
 
 Completion criterion: the skill passes structural validation, its scripts pass meaningful tests, all references resolve, and the resulting behavior matches the user's success criteria.
 
