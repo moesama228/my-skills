@@ -179,6 +179,11 @@ class OpenAIGeneratorTests(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             openai_generator.validate_interface("demo", {"icon_small": "/tmp/icon.svg"})
+        with self.assertRaises(ValueError):
+            openai_generator.validate_interface(
+                "demo",
+                {"icon_small": "./assets/../outside.svg"},
+            )
 
 
 class ValidatorTests(unittest.TestCase):

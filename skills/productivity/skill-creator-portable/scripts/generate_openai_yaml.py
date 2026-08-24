@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 ACRONYMS = {"AI", "API", "CI", "CLI", "GH", "LLM", "MCP", "PDF", "PR", "SQL", "UI", "URL"}
@@ -110,8 +110,14 @@ def validate_interface(skill_name: str, overrides: dict[str, str]) -> tuple[str,
 
     for key in ("icon_small", "icon_large"):
         value = overrides.get(key)
-        if value and (Path(value).is_absolute() or not value.startswith("./assets/")):
-            raise ValueError(f"{key} must be a relative path under ./assets/.")
+        if value:
+            icon_path = PurePosixPath(value)
+            if (
+                icon_path.is_absolute()
+                or not value.startswith("./assets/")
+                or ".." in icon_path.parts
+            ):
+                raise ValueError(f"{key} must be a relative path under ./assets/.")
 
     brand_color = overrides.get("brand_color")
     if brand_color and not re.fullmatch(r"#[0-9A-Fa-f]{6}", brand_color):
