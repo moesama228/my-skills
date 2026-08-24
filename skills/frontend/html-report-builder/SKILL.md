@@ -1,6 +1,7 @@
 ---
 name: html-report-builder
-description: Create polished static HTML report pages. Use whenever the user wants to turn source material, outlines, screenshots, metrics, research notes, or project summaries into a shareable HTML report. The skill supports two visual directions — Classic Enterprise (restrained blue-white briefing) and Modern SaaS (premium dark-hero + slate bento) — with bundled templates, style guides, and a standalone packaging script.
+description: Create polished static HTML report pages from source material, outlines, screenshots, metrics, research notes, or project summaries. Supports two visual directions — Classic Enterprise (restrained blue-white briefing) and Modern SaaS (premium dark-hero + slate bento) — with bundled templates, style guides, and a standalone packaging script.
+disable-model-invocation: true
 ---
 
 # HTML Report Builder
