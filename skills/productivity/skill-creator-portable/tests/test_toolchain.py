@@ -32,15 +32,34 @@ def write_skill(directory: Path, name: str, frontmatter: str = "", body: str = "
     return skill_dir
 
 
+def write_explicit_only_policy(skill_dir: Path, value: str = "false") -> None:
+    adapter = skill_dir / "agents" / "openai.yaml"
+    adapter.parent.mkdir(exist_ok=True)
+    adapter.write_text(
+        f"policy:\n  allow_implicit_invocation: {value}\n",
+        encoding="utf-8",
+    )
+
+
 class InitializerTests(unittest.TestCase):
-    def test_default_scaffold_is_vendor_neutral(self) -> None:
+    def test_default_scaffold_includes_openai_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = initializer.init_skill("Portable Skill", Path(tmp))
 
             self.assertEqual(skill_dir.name, "portable-skill")
             self.assertTrue((skill_dir / "SKILL.md").is_file())
+            self.assertTrue((skill_dir / "agents" / "openai.yaml").is_file())
+            self.assertEqual(sorted(path.name for path in skill_dir.iterdir()), ["SKILL.md", "agents"])
+
+    def test_vendor_neutral_scaffold_can_omit_openai_adapter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = initializer.init_skill(
+                "Portable Skill",
+                Path(tmp),
+                include_openai=False,
+            )
+
             self.assertFalse((skill_dir / "agents").exists())
-            self.assertEqual(sorted(path.name for path in skill_dir.iterdir()), ["SKILL.md"])
 
     def test_selected_resources_and_openai_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -48,7 +67,6 @@ class InitializerTests(unittest.TestCase):
                 "media-helper",
                 Path(tmp),
                 resources=["scripts", "assets"],
-                include_openai=True,
                 interface_overrides=[
                     "brand_color=#336699",
                     "default_prompt=Use $media-helper to prepare media.",
@@ -61,6 +79,34 @@ class InitializerTests(unittest.TestCase):
             adapter = (skill_dir / "agents" / "openai.yaml").read_text(encoding="utf-8")
             self.assertIn('brand_color: "#336699"', adapter)
             self.assertIn("$media-helper", adapter)
+
+    def test_explicit_only_scaffold_pairs_invocation_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = initializer.init_skill(
+                "manual-helper",
+                Path(tmp),
+                explicit_only=True,
+            )
+
+            skill_md = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+            adapter = (skill_dir / "agents" / "openai.yaml").read_text(encoding="utf-8")
+            self.assertIn("disable-model-invocation: true", skill_md)
+            self.assertIn("allow_implicit_invocation: false", adapter)
+            self.assertIn("Summarize this skill for users", skill_md)
+
+    def test_explicit_only_rejects_openai_opt_out(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+
+            with self.assertRaises(ValueError):
+                initializer.init_skill(
+                    "manual-helper",
+                    output,
+                    include_openai=False,
+                    explicit_only=True,
+                )
+
+            self.assertEqual(list(output.iterdir()), [])
 
     def test_invalid_name_and_long_name_fail(self) -> None:
         with self.assertRaises(ValueError):
@@ -106,6 +152,22 @@ class OpenAIGeneratorTests(unittest.TestCase):
                 openai_generator.write_openai_yaml(skill_dir, "portable-skill", [])
 
             self.assertEqual(output.read_text(encoding="utf-8"), original)
+
+    def test_generator_can_add_explicit_only_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(Path(tmp), "manual-skill")
+
+            output = openai_generator.write_openai_yaml(
+                skill_dir,
+                "manual-skill",
+                [],
+                explicit_only=True,
+            )
+
+            self.assertIn(
+                "policy:\n  allow_implicit_invocation: false",
+                output.read_text(encoding="utf-8"),
+            )
 
     def test_generator_validates_product_fields(self) -> None:
         with self.assertRaises(ValueError):
@@ -154,6 +216,146 @@ class ValidatorTests(unittest.TestCase):
                     skill_dir = write_skill(root, name, frontmatter=extra)
                     errors, _ = validator.validate_skill(skill_dir)
                     self.assertTrue(errors)
+
+    def test_extension_is_valid_without_a_target_when_policy_is_paired(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "manual-skill",
+                frontmatter="disable-model-invocation: true",
+            )
+            write_explicit_only_policy(skill_dir)
+
+            report = validator.analyze_skill(skill_dir)
+            errors, warnings = validator.validate_skill(skill_dir)
+
+            self.assertEqual(report.errors, [])
+            self.assertEqual(report.notes, [])
+            self.assertEqual(errors, [])
+            self.assertEqual(warnings, [])
+
+    def test_standalone_targets_accept_disable_model_invocation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "manual-skill",
+                frontmatter="disable-model-invocation: true",
+            )
+            write_explicit_only_policy(skill_dir)
+
+            for target in ("claude", "codex", "kimi", "grok", "cursor", "pi"):
+                with self.subTest(target=target):
+                    report = validator.analyze_skill(skill_dir, targets=[target])
+                    self.assertEqual(report.errors, [])
+                    self.assertEqual(report.quality_warnings, [])
+
+    def test_disable_model_invocation_requires_a_yaml_boolean(self) -> None:
+        cases = {
+            "quoted-boolean": 'disable-model-invocation: "true"',
+            "integer-boolean": "disable-model-invocation: 1",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name, frontmatter in cases.items():
+                with self.subTest(name=name):
+                    skill_dir = write_skill(root, name, frontmatter=frontmatter)
+                    report = validator.analyze_skill(skill_dir, targets=["claude"])
+                    self.assertTrue(any("YAML boolean" in error for error in report.errors))
+
+    def test_explicit_only_extension_requires_policy_pairing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "manual-skill",
+                frontmatter="disable-model-invocation: true",
+            )
+
+            missing_report = validator.analyze_skill(skill_dir)
+            write_explicit_only_policy(skill_dir, value="true")
+            invalid_report = validator.analyze_skill(skill_dir)
+            write_explicit_only_policy(skill_dir)
+            valid_report = validator.analyze_skill(skill_dir)
+
+            self.assertTrue(
+                any("INVOCATION_PAIR_MISSING" in error for error in missing_report.errors)
+            )
+            self.assertTrue(
+                any("INVOCATION_PAIR_INVALID" in error for error in invalid_report.errors)
+            )
+            self.assertEqual(valid_report.errors, [])
+
+    def test_false_extension_does_not_require_policy_pairing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "model-invoked-skill",
+                frontmatter="disable-model-invocation: false",
+            )
+
+            report = validator.analyze_skill(skill_dir, targets=["codex"])
+
+            self.assertEqual(report.errors, [])
+
+    def test_codex_and_native_target_share_extension_frontmatter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "multi-target-skill",
+                frontmatter="disable-model-invocation: true",
+            )
+            write_explicit_only_policy(skill_dir)
+
+            report = validator.analyze_skill(
+                skill_dir,
+                targets=["claude", "codex"],
+            )
+
+            self.assertEqual(report.errors, [])
+
+    def test_target_checks_standard_field_acceptance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "codex-compatibility",
+                frontmatter="compatibility: Requires Python 3.9+.",
+            )
+
+            report = validator.analyze_skill(skill_dir, targets=["codex"])
+
+            self.assertTrue(any("compatibility" in error for error in report.errors))
+            self.assertTrue(any("Codex" in error for error in report.errors))
+
+    def test_runtime_notice_does_not_fail_strict_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = write_skill(
+                Path(tmp),
+                "codex-tools",
+                frontmatter='allowed-tools: "Read"',
+            )
+
+            report = validator.analyze_skill(skill_dir, targets=["codex"])
+
+            self.assertEqual(report.errors, [])
+            self.assertEqual(report.quality_warnings, [])
+            self.assertTrue(any("authorization" in note for note in report.notes))
+            self.assertFalse(report.should_fail(strict=True))
+
+            output = io.StringIO()
+            with patch.object(
+                sys,
+                "argv",
+                [
+                    "validate_skill.py",
+                    str(skill_dir),
+                    "--target",
+                    "codex",
+                    "--strict",
+                ],
+            ):
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(validator.main(), 0)
+            self.assertIn("NOTICE:", output.getvalue())
+            self.assertIn("other adapter fields were not", output.getvalue())
 
     def test_empty_required_fields_and_directory_mismatch_fail(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -6,8 +6,12 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Sequence
 from urllib.parse import unquote, urlparse
+
+from frontmatter_support import SUPPORTED_TARGETS, analyze_frontmatter
 
 try:
     import yaml
@@ -15,24 +19,22 @@ except ImportError:  # Reported cleanly by main and validate_skill.
     yaml = None
 
 
-MAX_SKILL_NAME_LENGTH = 64
-MAX_DESCRIPTION_LENGTH = 1024
-MAX_COMPATIBILITY_LENGTH = 500
 RECOMMENDED_MAX_LINES = 500
-ALLOWED_FIELDS = {
-    "name",
-    "description",
-    "license",
-    "compatibility",
-    "metadata",
-    "allowed-tools",
-}
-NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_PATTERN = re.compile(
     r"\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)",
     re.DOTALL,
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"!?(?:\[[^\]]*\])\(([^)]+)\)")
+
+
+@dataclass
+class ValidationReport:
+    errors: list[str]
+    quality_warnings: list[str]
+    notes: list[str]
+
+    def should_fail(self, strict: bool = False) -> bool:
+        return bool(self.errors or (strict and self.quality_warnings))
 
 
 def parse_skill(content: str) -> tuple[dict, str]:
@@ -51,80 +53,6 @@ def parse_skill(content: str) -> tuple[dict, str]:
     if not isinstance(metadata, dict):
         raise ValueError("SKILL.md frontmatter must be a YAML mapping.")
     return metadata, content[match.end() :]
-
-
-def validate_frontmatter(metadata: dict, skill_dir: Path) -> list[str]:
-    errors: list[str] = []
-
-    unexpected = sorted(set(metadata) - ALLOWED_FIELDS)
-    if unexpected:
-        errors.append(
-            "Unexpected frontmatter field(s): "
-            f"{', '.join(unexpected)}. Allowed fields: {', '.join(sorted(ALLOWED_FIELDS))}."
-        )
-
-    name = metadata.get("name")
-    if not isinstance(name, str) or not name.strip():
-        errors.append("Field 'name' must be a non-empty string.")
-    else:
-        name = name.strip()
-        if len(name) > MAX_SKILL_NAME_LENGTH:
-            errors.append(
-                f"Field 'name' exceeds {MAX_SKILL_NAME_LENGTH} characters "
-                f"({len(name)} characters)."
-            )
-        if not NAME_PATTERN.fullmatch(name):
-            errors.append(
-                "Field 'name' must use lowercase ASCII letters, digits, and single hyphens, "
-                "without leading or trailing hyphens."
-            )
-        if skill_dir.name != name:
-            errors.append(
-                f"Directory name '{skill_dir.name}' must match frontmatter name '{name}'."
-            )
-
-    description = metadata.get("description")
-    if not isinstance(description, str) or not description.strip():
-        errors.append("Field 'description' must be a non-empty string.")
-    elif len(description) > MAX_DESCRIPTION_LENGTH:
-        errors.append(
-            f"Field 'description' exceeds {MAX_DESCRIPTION_LENGTH} characters "
-            f"({len(description)} characters)."
-        )
-
-    if "license" in metadata:
-        license_value = metadata["license"]
-        if not isinstance(license_value, str) or not license_value.strip():
-            errors.append("Field 'license' must be a non-empty string when provided.")
-
-    if "compatibility" in metadata:
-        compatibility = metadata["compatibility"]
-        if not isinstance(compatibility, str) or not compatibility.strip():
-            errors.append("Field 'compatibility' must be a non-empty string when provided.")
-        elif len(compatibility) > MAX_COMPATIBILITY_LENGTH:
-            errors.append(
-                f"Field 'compatibility' exceeds {MAX_COMPATIBILITY_LENGTH} characters "
-                f"({len(compatibility)} characters)."
-            )
-
-    if "metadata" in metadata:
-        extra_metadata = metadata["metadata"]
-        if not isinstance(extra_metadata, dict):
-            errors.append("Field 'metadata' must be a mapping of string keys to string values.")
-        else:
-            for key, value in extra_metadata.items():
-                if not isinstance(key, str) or not isinstance(value, str):
-                    errors.append(
-                        "Field 'metadata' must contain only string keys and string values."
-                    )
-                    break
-
-    if "allowed-tools" in metadata:
-        allowed_tools = metadata["allowed-tools"]
-        if not isinstance(allowed_tools, str) or not allowed_tools.strip():
-            errors.append("Field 'allowed-tools' must be a non-empty string when provided.")
-
-    return errors
 
 
 def find_unfinished_markers(body: str) -> bool:
@@ -193,27 +121,62 @@ def find_broken_local_links(body: str, skill_dir: Path) -> list[str]:
     return warnings
 
 
-def validate_skill(skill_path: Path) -> tuple[list[str], list[str]]:
+def validate_explicit_only_pair(metadata: dict, skill_dir: Path) -> list[str]:
+    """Require the OpenAI invocation policy when portable frontmatter is explicit-only."""
+
+    if metadata.get("disable-model-invocation") is not True:
+        return []
+
+    adapter_path = skill_dir / "agents" / "openai.yaml"
+    if not adapter_path.is_file():
+        return [
+            "[INVOCATION_PAIR_MISSING] An explicit-only skill also requires "
+            "agents/openai.yaml with policy.allow_implicit_invocation set to false."
+        ]
+
+    try:
+        adapter = yaml.safe_load(adapter_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        return [f"Invalid agents/openai.yaml for explicit-only invocation: {exc}"]
+
+    policy = adapter.get("policy") if isinstance(adapter, dict) else None
+    if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not False:
+        return [
+            "[INVOCATION_PAIR_INVALID] An explicit-only skill requires "
+            "agents/openai.yaml policy.allow_implicit_invocation to be the YAML boolean false."
+        ]
+    return []
+
+
+def analyze_skill(
+    skill_path: Path,
+    *,
+    targets: Sequence[str] = (),
+) -> ValidationReport:
     skill_dir = Path(skill_path).expanduser().resolve()
     errors: list[str] = []
     warnings: list[str] = []
+    notes: list[str] = []
 
     if not skill_dir.exists():
-        return [f"Path does not exist: {skill_dir}"], warnings
+        return ValidationReport([f"Path does not exist: {skill_dir}"], warnings, notes)
     if not skill_dir.is_dir():
-        return [f"Path is not a directory: {skill_dir}"], warnings
+        return ValidationReport([f"Path is not a directory: {skill_dir}"], warnings, notes)
 
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.is_file():
-        return ["Missing required file: SKILL.md"], warnings
+        return ValidationReport(["Missing required file: SKILL.md"], warnings, notes)
 
     try:
         content = skill_md.read_text(encoding="utf-8")
         metadata, body = parse_skill(content)
     except (OSError, RuntimeError, UnicodeError, ValueError) as exc:
-        return [str(exc)], warnings
+        return ValidationReport([str(exc)], warnings, notes)
 
-    errors.extend(validate_frontmatter(metadata, skill_dir))
+    frontmatter = analyze_frontmatter(metadata, skill_dir, targets)
+    errors.extend(frontmatter.errors)
+    notes.extend(frontmatter.notes)
+    errors.extend(validate_explicit_only_pair(metadata, skill_dir))
 
     description = metadata.get("description")
     if isinstance(description, str) and "[TODO:" in description:
@@ -229,7 +192,14 @@ def validate_skill(skill_path: Path) -> tuple[list[str], list[str]]:
         warnings.append("SKILL.md contains an unfinished scaffold marker outside a code fence.")
     warnings.extend(find_broken_local_links(body, skill_dir))
 
-    return errors, warnings
+    return ValidationReport(errors, warnings, notes)
+
+
+def validate_skill(skill_path: Path) -> tuple[list[str], list[str]]:
+    """Compatibility wrapper for validation without target-specific checks."""
+
+    report = analyze_skill(skill_path)
+    return report.errors, report.quality_warnings
 
 
 def main() -> int:
@@ -240,17 +210,33 @@ def main() -> int:
         action="store_true",
         help="Return a non-zero status when quality warnings are present",
     )
+    parser.add_argument(
+        "--target",
+        action="append",
+        default=[],
+        choices=SUPPORTED_TARGETS,
+        help="Check SKILL.md frontmatter for a client target; repeat for multiple targets",
+    )
     args = parser.parse_args()
 
-    errors, warnings = validate_skill(Path(args.skill_directory))
-    for message in errors:
+    report = analyze_skill(Path(args.skill_directory), targets=args.target)
+    for message in report.errors:
         print(f"ERROR: {message}")
-    for message in warnings:
+    for message in report.quality_warnings:
         print(f"WARNING: {message}")
+    for message in report.notes:
+        print(f"NOTICE: {message}")
 
-    if errors or (args.strict and warnings):
+    if report.should_fail(strict=args.strict):
         return 1
-    print("Skill is valid.")
+    if args.target:
+        targets = ", ".join(dict.fromkeys(args.target))
+        print(
+            "SKILL.md is valid and its frontmatter is accepted by target(s): "
+            f"{targets}. Explicit-only pairing was checked; other adapter fields were not."
+        )
+    else:
+        print("Skill is valid.")
     return 0
 
 

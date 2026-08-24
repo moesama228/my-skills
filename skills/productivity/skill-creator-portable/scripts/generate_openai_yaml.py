@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the optional agents/openai.yaml adapter for an Agent Skill."""
+"""Generate agents/openai.yaml for an Agent Skill."""
 
 from __future__ import annotations
 
@@ -156,6 +156,8 @@ def write_openai_yaml(
     skill_dir: Path,
     skill_name: str,
     raw_overrides: list[str],
+    *,
+    explicit_only: bool = False,
 ) -> Path:
     overrides, optional_order = parse_interface_overrides(raw_overrides)
     display_name, short_description = validate_interface(skill_name, overrides)
@@ -173,6 +175,14 @@ def write_openai_yaml(
     ]
     for key in optional_order:
         lines.append(f"  {key}: {yaml_quote(overrides[key])}")
+    if explicit_only:
+        lines.extend(
+            [
+                "",
+                "policy:",
+                "  allow_implicit_invocation: false",
+            ]
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -181,7 +191,7 @@ def write_openai_yaml(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Create the optional agents/openai.yaml adapter for an Agent Skill."
+        description="Create agents/openai.yaml for an Agent Skill."
     )
     parser.add_argument("skill_dir", help="Path to the skill directory")
     parser.add_argument("--name", help="Skill name override; defaults to SKILL.md frontmatter")
@@ -190,6 +200,11 @@ def main() -> int:
         action="append",
         default=[],
         help="OpenAI interface field in key=value form; repeat as needed",
+    )
+    parser.add_argument(
+        "--explicit-only",
+        action="store_true",
+        help="Set policy.allow_implicit_invocation to false",
     )
     args = parser.parse_args()
 
@@ -200,7 +215,12 @@ def main() -> int:
 
     try:
         skill_name = args.name or read_frontmatter_name(skill_dir)
-        output_path = write_openai_yaml(skill_dir, skill_name, args.interface)
+        output_path = write_openai_yaml(
+            skill_dir,
+            skill_name,
+            args.interface,
+            explicit_only=args.explicit_only,
+        )
     except (FileExistsError, RuntimeError, ValueError) as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1

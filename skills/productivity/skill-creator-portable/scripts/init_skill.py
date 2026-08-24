@@ -16,16 +16,6 @@ from generate_openai_yaml import parse_interface_overrides, write_openai_yaml
 MAX_SKILL_NAME_LENGTH = 64
 ALLOWED_RESOURCES = {"scripts", "references", "assets"}
 
-SKILL_TEMPLATE = """---
-name: {skill_name}
-description: "[TODO: Describe what this skill does and when an agent should use it.]"
----
-
-# {skill_title}
-
-[TODO: Add the task-specific guidance an agent needs. Keep only resources that support real workflow branches.]
-"""
-
 
 def normalize_skill_name(raw_name: str) -> str:
     normalized = raw_name.strip().lower()
@@ -50,6 +40,32 @@ def title_case_skill_name(skill_name: str) -> str:
     return " ".join(word.capitalize() for word in skill_name.split("-"))
 
 
+def render_skill_markdown(skill_name: str, *, explicit_only: bool = False) -> str:
+    description = (
+        "[TODO: Summarize this skill for users.]"
+        if explicit_only
+        else "[TODO: Describe what this skill does and when an agent should use it.]"
+    )
+    lines = [
+        "---",
+        f"name: {skill_name}",
+        f'description: "{description}"',
+    ]
+    if explicit_only:
+        lines.append("disable-model-invocation: true")
+    lines.extend(
+        [
+            "---",
+            "",
+            f"# {title_case_skill_name(skill_name)}",
+            "",
+            "[TODO: Add the task-specific guidance an agent needs. Keep only resources that support real workflow branches.]",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def parse_resources(raw_resources: str) -> list[str]:
     if not raw_resources:
         return []
@@ -65,8 +81,9 @@ def init_skill(
     raw_name: str,
     output_directory: Path,
     resources: list[str] | None = None,
-    include_openai: bool = False,
+    include_openai: bool = True,
     interface_overrides: list[str] | None = None,
+    explicit_only: bool = False,
 ) -> Path:
     skill_name = validate_requested_name(raw_name)
     resources = resources or []
@@ -75,8 +92,10 @@ def init_skill(
     invalid = sorted(set(resources) - ALLOWED_RESOURCES)
     if invalid:
         raise ValueError(f"Unknown resource type(s): {', '.join(invalid)}.")
+    if explicit_only and not include_openai:
+        raise ValueError("An explicit-only skill requires the default OpenAI adapter.")
     if interface_overrides and not include_openai:
-        raise ValueError("--interface requires --openai.")
+        raise ValueError("--interface cannot be combined with --no-openai.")
     if include_openai:
         parse_interface_overrides(interface_overrides)
 
@@ -89,15 +108,19 @@ def init_skill(
     staging = Path(tempfile.mkdtemp(prefix=f".{skill_name}.", dir=output_directory))
 
     try:
-        title = title_case_skill_name(skill_name)
         (staging / "SKILL.md").write_text(
-            SKILL_TEMPLATE.format(skill_name=skill_name, skill_title=title),
+            render_skill_markdown(skill_name, explicit_only=explicit_only),
             encoding="utf-8",
         )
         for resource in resources:
             (staging / resource).mkdir()
         if include_openai:
-            write_openai_yaml(staging, skill_name, interface_overrides)
+            write_openai_yaml(
+                staging,
+                skill_name,
+                interface_overrides,
+                explicit_only=explicit_only,
+            )
         staging.rename(skill_dir)
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
@@ -115,16 +138,30 @@ def main() -> int:
         default="",
         help="Comma-separated optional directories: scripts,references,assets",
     )
-    parser.add_argument(
+    adapter_group = parser.add_mutually_exclusive_group()
+    adapter_group.add_argument(
         "--openai",
+        dest="include_openai",
         action="store_true",
-        help="Add the optional agents/openai.yaml product adapter",
+        help=argparse.SUPPRESS,
     )
+    adapter_group.add_argument(
+        "--no-openai",
+        dest="include_openai",
+        action="store_false",
+        help="Omit the default agents/openai.yaml adapter",
+    )
+    parser.set_defaults(include_openai=True)
     parser.add_argument(
         "--interface",
         action="append",
         default=[],
-        help="OpenAI interface field in key=value form; requires --openai",
+        help="OpenAI interface field in key=value form; repeat as needed",
+    )
+    parser.add_argument(
+        "--explicit-only",
+        action="store_true",
+        help="Configure the skill for user-only explicit invocation",
     )
     args = parser.parse_args()
 
@@ -134,8 +171,9 @@ def main() -> int:
             args.skill_name,
             Path(args.path),
             resources=resources,
-            include_openai=args.openai,
+            include_openai=args.include_openai,
             interface_overrides=args.interface,
+            explicit_only=args.explicit_only,
         )
     except (FileExistsError, OSError, ValueError) as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
