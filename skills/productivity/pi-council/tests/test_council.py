@@ -205,8 +205,40 @@ class CouncilTestCase(unittest.TestCase):
         tools = argv[argv.index("--tools") + 1].split(",")
         self.assertEqual(set(tools), {"read", "grep", "find", "ls"})
         self.assertFalse({"write", "edit", "bash", "powershell"} & set(tools))
-        # The prompt travels via stdin and never appears in argv.
+        # Default thinking level is high; the prompt travels via stdin, never argv.
+        self.assertEqual(argv[argv.index("--thinking") + 1], "high")
         self.assertNotIn("check args", json.dumps(argv))
+
+    def test_thinking_override(self):
+        code, _, _ = self.run_council(
+            ["task", "--models", "a/m1", "--thinking", "off", "-w", str(self.workspace)])
+        self.assertEqual(code, council.EXIT_OK)
+        argv = self.last_argv()
+        self.assertEqual(argv[argv.index("--thinking") + 1], "off")
+
+    def test_events_written_only_on_demand_or_failure(self):
+        # Default: successful lanes leave no events.jsonl behind.
+        code, out, _ = self.run_council(
+            ["task", "--models", "a/m1", "-w", str(self.workspace)])
+        self.assertEqual(code, council.EXIT_OK)
+        run_dir = Path([l.split("=", 1)[1] for l in out.splitlines()
+                        if l.startswith("run_dir=")][0])
+        self.assertFalse((run_dir / "a-m1.events.jsonl").exists())
+        self.assertTrue((run_dir / "a-m1.md").exists())
+
+        # --events keeps the raw stream even for successful lanes.
+        code, out, _ = self.run_council(
+            ["task", "--models", "a/m1", "--events", "-w", str(self.workspace)])
+        self.assertEqual(code, council.EXIT_OK)
+        run_dir = Path([l.split("=", 1)[1] for l in out.splitlines()
+                        if l.startswith("run_dir=")][0])
+        self.assertTrue((run_dir / "a-m1.events.jsonl").exists())
+
+    def test_state_report_on_stderr(self):
+        _, _, err = self.run_council(
+            ["task", "--models", "a/m1", "-w", str(self.workspace)])
+        self.assertIn("runs,", err)
+        self.assertIn("MB accumulated", err)
 
     def test_timeout_kills_lane_and_salvages_events(self):
         code, out, _ = self.run_council(

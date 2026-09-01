@@ -26,6 +26,8 @@ READ_ONLY_TOOLS = "read,grep,find,ls"
 CONFIG_SCHEMA = "pi-council.config.v1"
 DEFAULT_TIMEOUT = 600
 MAX_FOCUS_FILES = 4
+THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
+DEFAULT_THINKING = "high"
 
 EXIT_OK = 0
 EXIT_FAILED = 1
@@ -74,6 +76,18 @@ def state_home() -> Path:
     return (Path(xdg) if xdg else Path.home() / ".local" / "state") / "pi-council"
 
 
+def report_state(home: Path) -> None:
+    """Tell the user how much run data has accumulated; they decide when to purge."""
+    runs_dir = home / "runs"
+    try:
+        runs = [d for d in runs_dir.iterdir() if d.is_dir()]
+        total = sum(f.stat().st_size for d in runs for f in d.rglob("*") if f.is_file())
+        print(f"[council] state: {len(runs)} runs, {total / 1e6:.1f} MB accumulated "
+              f"at {runs_dir} (delete it anytime)", file=sys.stderr)
+    except OSError:
+        pass
+
+
 def load_config(path: Path):
     """Return the saved model list, or None when no config exists."""
     if not path.is_file():
@@ -120,7 +134,7 @@ def pi_command_prefix():
     return [exe]
 
 
-def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS):
+def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS, thinking=None):
     """Assemble the pi command. The prompt itself travels via stdin, never argv."""
     argv = ["-p", "--mode", "json"]
     if tools is None:
@@ -136,6 +150,8 @@ def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS):
         "--no-approve",
         "--model", model,
     ]
+    if thinking:
+        argv += ["--thinking", thinking]
     argv += ["@" + f for f in files]
     return argv
 
@@ -212,10 +228,11 @@ def _kill_tree(proc) -> None:
 
 
 def run_lane(model: str, prefix, files, prompt: str, workspace: Path,
-             timeout: int, run_dir: Path, slug: str, tools=READ_ONLY_TOOLS):
+             timeout: int, run_dir: Path, slug: str, tools=READ_ONLY_TOOLS,
+             thinking=None, keep_events=False):
     """Run one pi process for one model; never raises, returns a result dict."""
     events_path = run_dir / f"{slug}.events.jsonl"
-    argv = prefix + build_lane_argv(model, files, tools=tools)
+    argv = prefix + build_lane_argv(model, files, tools=tools, thinking=thinking)
     started = time.monotonic()
     error = None
     stdout = ""
@@ -249,10 +266,13 @@ def run_lane(model: str, prefix, files, prompt: str, workspace: Path,
         error = f"failed to launch pi: {exc}"
     elapsed = time.monotonic() - started
 
-    try:
-        events_path.write_text(stdout, encoding="utf-8")
-    except OSError:
-        pass
+    # Raw events are diagnostic payload: keep them on demand (--events) and
+    # always for failed lanes, where they carry the evidence.
+    if keep_events or error is not None:
+        try:
+            events_path.write_text(stdout, encoding="utf-8")
+        except OSError:
+            pass
 
     reply, session_id, usage = parse_events(stdout)
     if error is None:
@@ -402,9 +422,16 @@ def main(argv=None) -> int:
                         help="working directory for every lane (default: cwd)")
     parser.add_argument("--synthesize", metavar="MODEL",
                         help="after collecting opinions, ask MODEL to synthesize them")
+    parser.add_argument("--thinking", choices=THINKING_LEVELS, default=DEFAULT_THINKING,
+                        help=f"thinking level for every lane (default: {DEFAULT_THINKING})")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
                         help=f"per-lane timeout in seconds (default: {DEFAULT_TIMEOUT}); "
                              "raise it for slow thinking-heavy models")
+    parser.add_argument("--events", dest="events", action="store_true", default=False,
+                        help="keep each lane's raw NDJSON event stream (default: off; "
+                             "failed lanes always keep theirs)")
+    parser.add_argument("--no-events", dest="events", action="store_false",
+                        help="explicit form of the default")
     parser.add_argument("-o", "--output", help="result.md path (default: <run_dir>/result.md)")
     args = parser.parse_args(argv)
 
@@ -476,7 +503,8 @@ def main(argv=None) -> int:
             slugs[base] = n
             slug = base if n == 1 else f"{base}-{n}"
             futures[pool.submit(run_lane, model, prefix, files, prompt,
-                                workspace, args.timeout, run_dir, slug)] = model
+                                workspace, args.timeout, run_dir, slug,
+                                thinking=args.thinking, keep_events=args.events)] = model
         for future in as_completed(futures):
             lane = future.result()
             lanes.append(lane)
@@ -501,7 +529,8 @@ def main(argv=None) -> int:
                                  build_synthesis_prompt(task, ok_lanes),
                                  workspace, args.timeout, run_dir,
                                  slugify(args.synthesize) + "-synthesis",
-                                 tools=None)
+                                 tools=None, thinking=args.thinking,
+                                 keep_events=args.events)
             write_lane_report(run_dir, synthesis)
         else:
             synthesis_note = "synthesis skipped: no successful lanes"
@@ -522,6 +551,8 @@ def main(argv=None) -> int:
     elif persist:
         print("[council] lineup not saved: every lane failed; fix the model list "
               "and re-run", file=sys.stderr)
+
+    report_state(home)
 
     if not failed:
         status = "completed"
