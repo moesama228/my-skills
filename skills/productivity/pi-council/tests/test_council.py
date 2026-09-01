@@ -132,6 +132,12 @@ class CouncilTestCase(unittest.TestCase):
         self.assertIn("plen=", result)
         # Usage is accumulated across tool-call and text messages (0.0004+0.001).
         self.assertIn("$0.0014", result)
+        # The final audit table records the requested thinking level.
+        self.assertIn("| a/m1 | ok | high |", result)
+        run_dir = Path([l.split("=", 1)[1] for l in out.splitlines()
+                        if l.startswith("run_dir=")][0])
+        self.assertNotIn("thinking level", (run_dir / "a-m1.md").read_text(
+            encoding="utf-8").lower())
 
     def test_partial_failure(self):
         code, out, _ = self.run_council(
@@ -210,11 +216,12 @@ class CouncilTestCase(unittest.TestCase):
         self.assertNotIn("check args", json.dumps(argv))
 
     def test_thinking_override(self):
-        code, _, _ = self.run_council(
+        code, out, _ = self.run_council(
             ["task", "--models", "a/m1", "--thinking", "off", "-w", str(self.workspace)])
         self.assertEqual(code, council.EXIT_OK)
         argv = self.last_argv()
         self.assertEqual(argv[argv.index("--thinking") + 1], "off")
+        self.assertIn("| a/m1 | ok | off |", self.read_result(out))
 
     def test_events_written_only_on_demand_or_failure(self):
         # Default: successful lanes leave no events.jsonl behind.
@@ -260,6 +267,7 @@ class CouncilTestCase(unittest.TestCase):
         result = self.read_result(out)
         self.assertIn("## Synthesis — s/chair", result)
         self.assertIn("reply-from-s/chair", result)
+        self.assertIn("| s/chair (synthesis) | ok | high |", result)
         chair_argv = self.all_argvs()[-1]
         self.assertIn("--no-tools", chair_argv)
         self.assertNotIn("--tools", chair_argv)
@@ -273,6 +281,16 @@ class CouncilTestCase(unittest.TestCase):
         self.assertIn("synthesis skipped: no successful lanes", result)
         # The chair must not be launched at all.
         self.assertEqual(len(self.all_argvs()), 1)
+
+    def test_failed_synthesis_is_in_audit_table(self):
+        code, out, _ = self.run_council(
+            ["task", "--models", "a/m1", "--synthesize", "badmodel/chair",
+             "-w", str(self.workspace)])
+        self.assertEqual(code, council.EXIT_OK)
+        result = self.read_result(out)
+        self.assertIn("| badmodel/chair (synthesis) | failed (", result)
+        self.assertIn("| high |", result)
+        self.assertIn("synthesis failed", result)
 
     def test_parse_events_robustness(self):
         stream = "\n".join([

@@ -288,6 +288,7 @@ def run_lane(model: str, prefix, files, prompt: str, workspace: Path,
         "ok": error is None,
         "error": error,
         "reply": reply,
+        "thinking_level": thinking,
         "session_id": session_id,
         "usage": usage,
         "elapsed": elapsed,
@@ -343,14 +344,22 @@ def write_result(run_dir: Path, task: str, mode: str, lanes, synthesis,
         "",
         "## Status",
         "",
-        "| Model | Status | Elapsed | Tokens (in/out) | Cost |",
-        "| --- | --- | --- | --- | --- |",
+        "| Model | Status | Thinking level | Elapsed | Tokens (in/out) | Cost |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for lane in lanes:
         status = "ok" if lane["ok"] else f"failed ({lane['error']})"
         lines.append(
-            f"| {lane['model']} | {status} | {lane['elapsed']:.1f}s "
+            f"| {lane['model']} | {status} | {lane.get('thinking_level') or '-'} "
+            f"| {lane['elapsed']:.1f}s "
             f"| {fmt_tokens(lane['usage'])} | {fmt_cost(lane['usage'])} |"
+        )
+    if synthesis is not None:
+        synthesis_status = "ok" if synthesis["ok"] else f"failed ({synthesis['error']})"
+        lines.append(
+            f"| {synthesis['model']} (synthesis) | {synthesis_status} "
+            f"| {synthesis.get('thinking_level') or '-'} | {synthesis['elapsed']:.1f}s "
+            f"| {fmt_tokens(synthesis['usage'])} | {fmt_cost(synthesis['usage'])} |"
         )
     lines.append("")
     for lane in lanes:

@@ -6,7 +6,7 @@
 
 - **群智群策**：一路一个模型、一个独立进程，意见互不污染——同一家族的模型容易趋同，不同厂商的模型才能真的吵起来
 - **绝对只读**：每路被硬性限制在 `read / grep / find / ls` 四个工具内，写文件、`bash` 全部被禁，说评审就只做评审
-- **面向 Agent 设计**：结构化产出（状态表 + 观点全文 + token/成本），调用方 agent 拿到结果即可继续综合汇报
+- **面向 Agent 设计**：结构化产出（状态表含 thinking 档位 + 观点全文 + token/成本），调用方 agent 拿到结果即可继续综合汇报
 
 ## 前置条件
 
@@ -56,7 +56,7 @@ council.py ──┬─ pi --model A ──┐
              └─ pi --model C ──┘
    │
    ▼
-result.md（状态表 + 各路观点全文 + 可选主席总结）
+result.md（状态表含 thinking 档位 + 各路观点全文 + 可选主席总结）
 ```
 
 每路实际执行：`pi -p --mode json --tools read,grep,find,ls --no-session --no-approve --model <模型>`，prompt 走 stdin。
@@ -69,7 +69,7 @@ result.md（状态表 + 各路观点全文 + 可选主席总结）
 
 ## 产物与成本
 
-- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路一个 `<model>.md`，外加 `result.md`；原始事件流默认不落盘（`--events` 开启，失败路始终保留）
+- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路一个 `<model>.md`，外加 `result.md`；最终 `result.md` 的状态表记录各路及可选主席模型使用的 thinking 档位，便于审计；原始事件流默认不落盘（`--events` 开启，失败路始终保留）
 - 运行结束 stderr 会汇报累计占用（`N runs, X MB`），觉得多了直接删 `runs/` 即可
 - 成本 = N 路 token 之和，状态表按每路全轮次累计；3~4 路是性价比甜区
 
