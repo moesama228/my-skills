@@ -23,9 +23,9 @@ One task in, N independent model opinions out. Each council lane is a separate `
    - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/m3/glm-5.3,litellm/m3/kimi-k3,openai-codex/gpt-5.6-sol`
    - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/m3/glm-5.3-flash`
 
-3. **Confirm before dispatch.** Present the shaped task text and the lineup, and adjust either on the user's feedback. Dispatch only after explicit approval — one run spends N× tokens on the user's behalf.
+3. **Confirm before dispatch.** Present the shaped task text and the lineup, and adjust either on feedback. Approval means a user message answering that presentation — the invoking message is raw input, never approval, even when it already names task and models. Dispatch only after approval (sole exception: the invocation explicitly waives confirmation, e.g. "直接跑", "skip confirm"); one run spends N× tokens on the user's behalf.
 
-4. Run the council from the workspace under discussion, using the installed skill's absolute script path. When the lineup was just settled in conversation, pass it with `--models ... --save`; it persists only after a run where at least one lane succeeded, so a typo'd lineup never becomes the saved default:
+4. Run the council from the workspace under discussion, using the installed skill's absolute script path. `--save` has exactly one job: replacing the saved lineup when the user asks to change the standing default — first-ever setup saves automatically, and a lineup named for one run goes in as `--models` alone. Persistence happens only after a run where at least one lane succeeded, so a typo'd lineup never becomes the saved default:
 
    ```bash
    python3 <skill-dir>/scripts/council.py "<task>" -m code-review -f src/api.ts -w /path/to/repo
@@ -40,7 +40,7 @@ One task in, N independent model opinions out. Each council lane is a separate `
 ```text
 council.py <task> [-t <task>]            # stdin works when no task arg is given
   -m discuss|brainstorm|review|code-review   # scenario preamble, default: discuss
-  --models a,b,c [--save]                # override lineup / persist lineup
+  --models a,b,c [--save]                # one-off override; --save replaces the saved default
   -f, --file <path> ...                  # up to 4 focus files, embedded into the prompt;
                                          # relative paths resolve against --workspace
   -w, --workspace <path>                 # working directory for every lane
