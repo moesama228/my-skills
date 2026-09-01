@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pi Council"
+  short_description: "Parallel read-only council of several LLMs"
+  default_prompt: "Use $pi-council to gather several models' opinions on my design proposal."
+policy:
+  allow_implicit_invocation: false
