@@ -19,7 +19,7 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 READ_ONLY_TOOLS = "read,grep,find,ls"
@@ -485,7 +485,7 @@ def main(argv=None) -> int:
 
     prefix = pi_command_prefix()
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")  # local system time
     run_dir = home / "runs" / f"run-{stamp}-{secrets.token_hex(4)}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
