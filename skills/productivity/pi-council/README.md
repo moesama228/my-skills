@@ -47,7 +47,9 @@ python3 scripts/council.py "帮我评审这个重构思路" -m review
 
 ```text
 你的任务原文
-   │  （主 agent 先打磨成自包含简报——lane 无法反问）
+   │  主 agent 最小编辑塑形：保留你的措辞，只补 lane 拿不到的上下文
+   ▼
+你确认：任务文本 + 派发阵容（确认前不派发）
    ▼
 council.py ──┬─ pi --model A ──┐
              ├─ pi --model B ──┼─ 并行、只读、互不感知

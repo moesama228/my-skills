@@ -1,7 +1,7 @@
 ---
 name: pi-council
 description: >-
-  Dispatch one task to several different LLMs in parallel via the pi CLI with read-only tools, and collect their independent opinions into one Markdown report. Built for brainstorming, design or proposal discussion, plan review, and code review. Explicit user invocation only.
+  Dispatch one task to several different LLMs in parallel via the pi CLI with read-only tools, and collect their independent opinions into one Markdown report. Built for brainstorming, design or proposal discussion, plan review, and code review.
 disable-model-invocation: true
 ---
 
@@ -16,28 +16,24 @@ One task in, N independent model opinions out. Each council lane is a separate `
 
 ## Workflow
 
-1. **Polish the task first — that is your job, not the script's.** Council lanes are one-shot: they cannot ask clarifying questions or see your conversation. Turn the user's raw request into a self-contained brief with background, relevant materials or paths, and the specific questions each lane should answer. `council.py` passes the task text verbatim.
+1. **Shape the task — keep the user's words, add only what's missing.** Council lanes are one-shot: they cannot ask clarifying questions and cannot see this conversation. Preserve the user's wording and priorities; add only the context a lane cannot supply itself — background, relevant materials or paths, and the specific questions to answer. Done when the text stands alone: a lane can act on it without asking anything back. `council.py` passes the task text verbatim.
 
-2. Run the council from the workspace under discussion. Use the installed skill's absolute script path (the relative form below assumes the skill directory is your cwd):
+2. **Settle the lineup.** Read the saved lineup from `<state_home>/config.json` (default `~/.local/state/pi-council`). If none exists, ask the user which models should sit on the council: run `pi --list-models`, then propose 3–4 IDs from **different vendors** — same-family models converge and defeat the council's purpose, and 3–4 lanes is the practical sweet spot since cost scales linearly (N models = N× tokens). Pass IDs exactly as listed, in `provider/model` form. Shapes that work well (illustrative, always confirm against the user's actual list):
+
+   - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/m3/glm-5.3,litellm/m3/kimi-k3,openai-codex/gpt-5.6-sol`
+   - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/m3/glm-5.3-flash`
+
+3. **Confirm before dispatch.** Present the shaped task text and the lineup, and adjust either on the user's feedback. Dispatch only after explicit approval — one run spends N× tokens on the user's behalf.
+
+4. Run the council from the workspace under discussion, using the installed skill's absolute script path. When the lineup was just settled in conversation, pass it with `--models ... --save`; it persists only after a run where at least one lane succeeded, so a typo'd lineup never becomes the saved default:
 
    ```bash
    python3 <skill-dir>/scripts/council.py "<task>" -m code-review -f src/api.ts -w /path/to/repo
    ```
 
-3. **Cold start** — exit code 3 with `status=config_required` means no model lineup is saved. Ask the user which models should sit on the council, then re-run with the lineup; it is saved automatically on first use (`--save` makes that explicit and also works when replacing an existing lineup):
+   (If a run still exits 3 with `status=config_required`, the lineup was never settled — return to step 2.)
 
-   ```bash
-   python3 <skill-dir>/scripts/council.py "<task>" --models deepseek/deepseek-v4-pro,openai/gpt-5 --save
-   ```
-
-   Later runs use the saved lineup silently. `--models a,b,c` without `--save` overrides for one run only. A lineup is persisted only after a run where at least one lane succeeded — a typo'd lineup never becomes the saved default.
-
-4. **Recommending a lineup** — at cold start, and whenever the user asks what models are available, run `pi --list-models` and propose 3–4 IDs from **different vendors**; same-family models converge and defeat the council's purpose. Pass IDs exactly as listed, in `provider/model` form. Shapes that work well (illustrative, always confirm against the user's actual list):
-
-   - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/m3/glm-5.3,litellm/m3/kimi-k3,openai-codex/gpt-5.6-sol`
-   - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/m3/glm-5.3-flash`
-
-5. Read `result.md` (path on stdout as `output_path=`). Report every lane's opinion to the user, explicitly separating consensus from genuine disagreement, and name any failed lanes from the status table. Do not silently drop a disagreement.
+5. Read `result.md` (path on stdout as `output_path=`). Report every lane's opinion to the user, explicitly separating consensus from genuine disagreement, and name any failed lanes from the status table.
 
 ## Command surface
 
@@ -72,21 +68,23 @@ The prompt is a scenario preamble plus the task, delivered on stdin (never argv)
 - `--tools read,grep,find,ls` is a tool-surface allowlist: `write`, `edit`, `bash`, `powershell`, and any extension-registered tools are unavailable to the lane. It restricts what a lane can *do*, not what it can *read* — a lane can read any file the user account can read.
 - `--no-session` keeps runs ephemeral; `--no-approve` ignores project-local pi configuration.
 - The optional chairman lane (`--synthesize`) runs with `--no-tools`, since it only reads the embedded opinions.
-- The preamble tells each model it is a read-only council member. Verified end-to-end: a lane asked to create a file refuses and nothing is written.
+- The preamble tells each model it is a read-only council member.
 - `--no-extensions` is deliberately **not** passed: user-level pi extensions may register custom providers (e.g. LiteLLM gateways), and disabling them makes those models vanish. The tools allowlist already blocks any tools such extensions add.
-- **Data egress**: the task, focus files, and anything lanes choose to read are sent to every provider in the lineup. Do not point the council at secrets or confidential material without the user's explicit consent.
+- **Data egress**: the task, focus files, and anything lanes choose to read are sent to every provider in the lineup. Get the user's consent before pointing the council at confidential material.
 
 ## Output contract
 
 stdout ends with machine-readable lines: `status=completed|partial|failed|config_required`, `output_path=`, `run_dir=`, `models=`, optional `failed=`, `elapsed=`. `partial` means at least one lane failed while others succeeded. Exit codes: 0 = at least one lane succeeded (including partial), 1 = all lanes failed or bad input, 3 = lineup not configured (2 is reserved for argparse usage errors).
 
-The run directory holds `<model-slug>.md` per lane plus the combined `result.md` (status table + full opinions + optional synthesis). Raw `<model-slug>.events.jsonl` streams are kept only for failed lanes, or for all lanes with `--events`. If every lane fails, synthesis is skipped and `result.md` says so explicitly.
+The run directory holds `<model-slug>.md` per lane plus the combined `result.md` (status table + full opinions + optional synthesis). Raw `<model-slug>.events.jsonl` streams are kept only for failed lanes, or for all lanes with `--events`. If every lane fails, synthesis is skipped and `result.md` says so explicitly. Reported token usage and cost are accumulated across every turn of a lane, including tool-call turns; `--thinking` is the main cost and latency lever.
 
 Run data accumulates: after each run the script reports on stderr how many runs and how many MB are stored under `<state_home>/runs/` (e.g. `[council] state: 12 runs, 45.0 MB accumulated at ... (delete it anytime)`). Surface this to the user when it grows large; purging old run directories is always safe.
 
 ## Environment variables
 
-- `PI_COUNCIL_STATE_HOME` — overrides the state directory (config + run artifacts). Default: `$XDG_STATE_HOME/pi-council` or `~/.local/state/pi-council` on POSIX, `%LOCALAPPDATA%\pi-council` on Windows. Set this to a throwaway directory to simulate a clean first run or isolate test runs.
+Both are escape hatches for developing or testing the skill itself — a normal council run needs neither, and neither should ever be set per-project.
+
+- `PI_COUNCIL_STATE_HOME` — overrides the state directory (config + run artifacts). Default: `$XDG_STATE_HOME/pi-council` or `~/.local/state/pi-council` on POSIX, `%LOCALAPPDATA%\pi-council` on Windows. The state is intentionally **user-level**: the saved lineup works in every workspace, so a new workspace is not a cold start, and the script creates and manages the directory itself. Legitimate use: an **isolated test run** — point it at a throwaway directory (e.g. `PI_COUNCIL_STATE_HOME=/tmp/pi-council-test`) to simulate a clean first run; the skill's own unit tests work this way.
 - `PI_COUNCIL_PI_BIN` — overrides the pi executable resolution (default: `pi` from `PATH`).
 
 ## Failure handling
@@ -95,7 +93,6 @@ Run data accumulates: after each run the script reports on stderr how many runs 
 - A timed-out lane is killed together with its whole process tree; its partial output is still salvaged into `events.jsonl`.
 - If a lane reports `Model "..." not found`, the saved lineup is stale: ask the user for a replacement and re-run with `--models ... --save`.
 - If every custom-provider lane fails at once, suspect a provider/auth outage rather than the task; check `pi auth check --provider <name>`. Note that extension-registered providers (e.g. LiteLLM gateways) can report `not_ready` there yet still work — an actual lane result beats the auth check.
-- Cost scales linearly with lanes: N models = N× tokens. Three to four lanes is the practical sweet spot. Reported cost is accumulated across every turn of a lane, including tool-call turns. Thinking level (`--thinking`) is the main cost/latency lever.
 
 ## Tests
 
