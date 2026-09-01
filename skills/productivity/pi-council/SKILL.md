@@ -34,8 +34,8 @@ One task in, N independent model opinions out. Each council lane is a separate `
 
 4. **Recommending a lineup** — at cold start, and whenever the user asks what models are available, run `pi --list-models` and propose 3–4 IDs from **different vendors**; same-family models converge and defeat the council's purpose. Pass IDs exactly as listed, in `provider/model` form. Shapes that work well (illustrative, always confirm against the user's actual list):
 
-   - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/360/glm-5.2,litellm/360/kimi-k2.6,openai-codex/gpt-5.5`
-   - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/360/glm-5.1,litellm/360/qwen3-32b`
+   - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/m3/glm-5.3,litellm/m3/kimi-k3,openai-codex/gpt-5.6-sol`
+   - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/m3/glm-5.3-flash`
 
 5. Read `result.md` (path on stdout as `output_path=`). Report every lane's opinion to the user, explicitly separating consensus from genuine disagreement, and name any failed lanes from the status table. Do not silently drop a disagreement.
 
