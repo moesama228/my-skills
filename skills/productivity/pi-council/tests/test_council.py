@@ -8,6 +8,8 @@ import os
 import stat
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -126,6 +128,8 @@ class CouncilTestCase(unittest.TestCase):
         result = self.read_result(out)
         for model in ("a/m1", "b/m2", "c/m3"):
             self.assertIn(f"reply-from-{model}", result)
+        self.assertLess(result.index("| a/m1 |"), result.index("| b/m2 |"))
+        self.assertLess(result.index("| b/m2 |"), result.index("| c/m3 |"))
         self.assertIn("| a/m1 | ok |", result)
         self.assertNotIn("failed=", out)
         # Prompt reached the lane via stdin (fake pi echoes the prompt length).
@@ -138,6 +142,57 @@ class CouncilTestCase(unittest.TestCase):
                         if l.startswith("run_dir=")][0])
         self.assertNotIn("thinking level", (run_dir / "a-m1.md").read_text(
             encoding="utf-8").lower())
+
+    def test_lane_report_is_written_before_other_lanes_finish(self):
+        slow_release = threading.Event()
+
+        def fake_run_lane(model, prefix, files, prompt, workspace, timeout,
+                          run_dir, slug, tools=council.READ_ONLY_TOOLS,
+                          thinking=None, keep_events=False):
+            if model == "a/slow":
+                slow_release.wait(timeout=5)
+            return {
+                "model": model,
+                "slug": slug,
+                "ok": True,
+                "error": None,
+                "reply": f"reply-from-{model}",
+                "thinking_level": thinking,
+                "session_id": f"session-{model}",
+                "usage": {},
+                "elapsed": 0.1,
+                "events_path": run_dir / f"{slug}.events.jsonl",
+            }
+
+        out, err = io.StringIO(), io.StringIO()
+        result = {}
+
+        def run():
+            with redirect_stdout(out), redirect_stderr(err):
+                result["code"] = council.main([
+                    "task", "--models", "a/fast,a/slow", "-w", str(self.workspace),
+                ])
+
+        with mock.patch.object(council, "pi_command_prefix", return_value=[]), \
+                mock.patch.object(council, "run_lane", side_effect=fake_run_lane):
+            worker = threading.Thread(target=run)
+            worker.start()
+            try:
+                deadline = time.monotonic() + 2
+                while "[council] a/fast done" not in err.getvalue() \
+                        and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertIn("[council] a/fast done", err.getvalue())
+                self.assertTrue(worker.is_alive())
+                run_dirs = list((self.state / "runs").glob("run-*"))
+                self.assertEqual(len(run_dirs), 1)
+                self.assertTrue((run_dirs[0] / "a-fast.md").is_file())
+            finally:
+                slow_release.set()
+                worker.join(timeout=2)
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(result["code"], council.EXIT_OK)
 
     def test_partial_failure(self):
         code, out, _ = self.run_council(

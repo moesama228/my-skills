@@ -517,14 +517,12 @@ def main(argv=None) -> int:
         for future in as_completed(futures):
             lane = future.result()
             lanes.append(lane)
+            write_lane_report(run_dir, lane)
             if lane["ok"]:
                 print(f"[council] {lane['model']} done ({lane['elapsed']:.0f}s)", file=sys.stderr)
             else:
                 print(f"[council] {lane['model']} FAILED: {lane['error']}", file=sys.stderr)
     lanes.sort(key=lambda l: models.index(l["model"]))
-
-    for lane in lanes:
-        write_lane_report(run_dir, lane)
 
     synthesis = None
     synthesis_note = None
