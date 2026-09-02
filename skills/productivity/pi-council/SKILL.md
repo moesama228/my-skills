@@ -18,23 +18,32 @@ One task in, N independent model opinions out. Each council lane is a separate `
 
 1. **Shape the task — keep the user's words, add only what's missing.** Council lanes are one-shot: they cannot ask clarifying questions and cannot see this conversation. Preserve the user's wording and priorities; add only the context a lane cannot supply itself — background, relevant materials or paths, and the specific questions to answer. Done when the text stands alone: a lane can act on it without asking anything back. `council.py` passes the task text verbatim. If the user explicitly names a project skill, pass its name with `--project-skill`; do not infer project-skill authorization from the task.
 
-2. **Settle the lineup.** Read the saved lineup from `<state_home>/config.json` (default `~/.local/state/pi-council`). If none exists, ask the user which models should sit on the council: run `pi --list-models`, then propose 3–4 IDs from **different vendors** — same-family models converge and defeat the council's purpose, and 3–4 lanes is the practical sweet spot since cost scales linearly (N models = N× tokens). Pass IDs exactly as listed, in `provider/model` form. Shapes that work well (illustrative, always confirm against the user's actual list):
+2. **Choose one mode by the primary requested output.** Honor an explicit user choice; otherwise use:
+
+   - `code-review` — inspect existing code for concrete findings with `file:line` evidence
+   - `review` — evaluate an existing proposal, plan, or design for strengths, risks, gaps, and a verdict
+   - `brainstorm` — generate varied ideas or materially different approaches
+   - `discuss` — develop a reasoned position and trade-offs; use this as the fallback
+
+   For a mixed request, choose the mode matching its main deliverable and keep secondary asks in the task text. If two deliverables are equally central, surface the proposed mode during confirmation. Always pass the selected mode with `-m`.
+
+3. **Settle the lineup.** Read the saved lineup from `<state_home>/config.json` (default `~/.local/state/pi-council`). If none exists, ask the user which models should sit on the council: run `pi --list-models`, then propose 3–4 IDs from **different vendors** — same-family models converge and defeat the council's purpose, and 3–4 lanes is the practical sweet spot since cost scales linearly (N models = N× tokens). Pass IDs exactly as listed, in `provider/model` form. Shapes that work well (illustrative, always confirm against the user's actual list):
 
    - quality-leaning: one reasoning-strong model per vendor, e.g. `deepseek/deepseek-v4-pro,litellm/m3/glm-5.3,litellm/m3/kimi-k3,openai-codex/gpt-5.6-sol`
    - budget-leaning: flash/mini tiers, e.g. `deepseek/deepseek-v4-flash,litellm/m3/glm-5.3-flash`
 
-3. **Confirm before dispatch.** Present the shaped task text, lineup, and any explicitly enabled project-skill names; adjust them on feedback. Approval means a user message answering that presentation — the invoking message is raw input, never approval, even when it already names task and models. Dispatch only after approval (sole exception: the invocation explicitly waives confirmation, e.g. "直接跑", "skip confirm"); one run spends N× tokens on the user's behalf.
+4. **Confirm before dispatch.** Present the shaped task text, selected mode, thinking level, lineup, and any explicitly enabled project-skill names; adjust them on feedback. Approval means a user message answering that presentation — the invoking message is raw input, never approval, even when it already names task and models. Dispatch only after approval (sole exception: the invocation explicitly waives confirmation, e.g. "直接跑", "skip confirm"); one run spends N× tokens on the user's behalf.
 
-4. Run the council from the workspace under discussion, using the installed skill's absolute script path. `--save` has exactly one job: replacing the saved lineup when the user asks to change the standing default — first-ever setup saves automatically, and a lineup named for one run goes in as `--models` alone. Persistence happens only after a run where at least one lane succeeded, so a typo'd lineup never becomes the saved default:
+5. Run the council from the workspace under discussion, using the installed skill's absolute script path. `--save` has exactly one job: replacing the saved lineup when the user asks to change the standing default — first-ever setup saves automatically, and a lineup named for one run goes in as `--models` alone. Persistence happens only after a run where at least one lane succeeded, so a typo'd lineup never becomes the saved default:
 
    ```bash
    python3 <skill-dir>/scripts/council.py "<task>" -m code-review \
      -f src/api.ts -w /path/to/repo [--project-skill <name> ...]
    ```
 
-   (If a run still exits 3 with `status=config_required`, the lineup was never settled — return to step 2.)
+   (If a run still exits 3 with `status=config_required`, the lineup was never settled — return to step 3.)
 
-5. Read `result.md` (path on stdout as `output_path=`). Report every lane's opinion to the user, explicitly separating consensus from genuine disagreement, and name any failed lanes from the status table.
+6. Read `result.md` (path on stdout as `output_path=`). Report every lane's opinion to the user, explicitly separating consensus from genuine disagreement, and name any failed lanes from the status table.
 
 ## Command surface
 
