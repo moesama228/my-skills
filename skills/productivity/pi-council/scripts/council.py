@@ -28,6 +28,7 @@ DEFAULT_TIMEOUT = 600
 MAX_FOCUS_FILES = 4
 THINKING_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
 DEFAULT_THINKING = "high"
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 EXIT_OK = 0
 EXIT_FAILED = 1
@@ -118,6 +119,82 @@ def save_config(path: Path, models) -> None:
     os.replace(tmp, path)
 
 
+def _frontmatter_skill_name(path: Path):
+    """Read a skill's frontmatter name without adding a YAML dependency."""
+    try:
+        with path.open(encoding="utf-8") as source:
+            if next(source, "").strip() != "---":
+                return None
+            for line in source:
+                if line.strip() == "---":
+                    break
+                match = re.match(r"^name:\s*(.*?)\s*$", line)
+                if not match:
+                    continue
+                name = match.group(1)
+                if len(name) >= 2 and name[0] == name[-1] and name[0] in ("'", '"'):
+                    name = name[1:-1]
+                return name
+    except (OSError, UnicodeError):
+        return None
+    return None
+
+
+def resolve_project_skills(workspace: Path, requested_names):
+    """Resolve explicitly named project skills under the two supported roots."""
+    workspace = workspace.resolve()
+    names = []
+    for raw_name in requested_names:
+        name = raw_name.strip()
+        if not SKILL_NAME_RE.fullmatch(name):
+            raise ValueError(
+                f"Invalid project skill name {raw_name!r}; expected lowercase letters, "
+                "digits, and hyphens."
+            )
+        if name not in names:
+            names.append(name)
+    if not names:
+        return []
+
+    found = {}
+    roots = [workspace / ".pi" / "skills", workspace / ".agents" / "skills"]
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for candidate in sorted(root.rglob("SKILL.md")):
+            resolved = candidate.resolve()
+            try:
+                resolved.relative_to(root.resolve())
+            except ValueError:
+                continue
+            skill_name = _frontmatter_skill_name(resolved)
+            if skill_name:
+                found.setdefault(skill_name, []).append(resolved)
+
+    resolved_skills = []
+    available = ", ".join(sorted(found)) or "none"
+    for name in names:
+        candidates = found.get(name, [])
+        if not candidates:
+            raise ValueError(
+                f"Project skill {name!r} was not found under .pi/skills or "
+                f".agents/skills. Available: {available}."
+            )
+        if len(candidates) > 1:
+            displays = ", ".join(str(path.relative_to(workspace)) for path in candidates)
+            raise ValueError(
+                f"Project skill {name!r} matches multiple SKILL.md files: {displays}. "
+                "Keep one matching project skill."
+            )
+        path = candidates[0]
+        resolved_skills.append({
+            "name": name,
+            "path": path,
+            "display_path": str(path.relative_to(workspace)),
+        })
+    return resolved_skills
+
+
 # ---------------------------------------------------------------- pi invocation
 
 def pi_command_prefix():
@@ -134,7 +211,8 @@ def pi_command_prefix():
     return [exe]
 
 
-def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS, thinking=None):
+def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS, thinking=None,
+                    skill_paths=None):
     """Assemble the pi command. The prompt itself travels via stdin, never argv."""
     argv = ["-p", "--mode", "json"]
     if tools is None:
@@ -152,6 +230,8 @@ def build_lane_argv(model: str, files, tools=READ_ONLY_TOOLS, thinking=None):
     ]
     if thinking:
         argv += ["--thinking", thinking]
+    for path in skill_paths or []:
+        argv += ["--skill", str(path)]
     argv += ["@" + f for f in files]
     return argv
 
@@ -229,10 +309,12 @@ def _kill_tree(proc) -> None:
 
 def run_lane(model: str, prefix, files, prompt: str, workspace: Path,
              timeout: int, run_dir: Path, slug: str, tools=READ_ONLY_TOOLS,
-             thinking=None, keep_events=False):
+             thinking=None, keep_events=False, skill_paths=None):
     """Run one pi process for one model; never raises, returns a result dict."""
     events_path = run_dir / f"{slug}.events.jsonl"
-    argv = prefix + build_lane_argv(model, files, tools=tools, thinking=thinking)
+    argv = prefix + build_lane_argv(
+        model, files, tools=tools, thinking=thinking, skill_paths=skill_paths
+    )
     started = time.monotonic()
     error = None
     stdout = ""
@@ -333,7 +415,7 @@ def write_lane_report(run_dir: Path, lane) -> Path:
 
 
 def write_result(run_dir: Path, task: str, mode: str, lanes, synthesis,
-                 synthesis_note=None) -> Path:
+                 synthesis_note=None, project_skills=()) -> Path:
     path = run_dir / "result.md"
     lines = [
         f"# Pi Council — {mode}",
@@ -341,6 +423,15 @@ def write_result(run_dir: Path, task: str, mode: str, lanes, synthesis,
         "## Task",
         "",
         task,
+        "",
+        "## Audit",
+        "",
+        "- Project skills: " + (
+            ", ".join(
+                f"`{skill['name']}` (`{skill['display_path']}`)"
+                for skill in project_skills
+            ) if project_skills else "none"
+        ),
         "",
         "## Status",
         "",
@@ -389,8 +480,18 @@ def parse_models_arg(raw: str):
     return models
 
 
-def build_prompt(mode: str, task: str) -> str:
-    return f"{COMMON_PREAMBLE}\n\n{MODE_PREAMBLES[mode]}\n\nTask:\n{task}"
+def build_prompt(mode: str, task: str, project_skills=()) -> str:
+    parts = [COMMON_PREAMBLE, "", MODE_PREAMBLES[mode], ""]
+    if project_skills:
+        parts += [
+            "The user explicitly authorized these project skills. Read each "
+            "SKILL.md before answering and follow it where relevant; the read-only "
+            "tool limit still applies:",
+        ]
+        parts += [f"- {skill['name']}: {skill['path']}" for skill in project_skills]
+        parts.append("")
+    parts += ["Task:", task]
+    return "\n".join(parts)
 
 
 def build_synthesis_prompt(task: str, lanes) -> str:
@@ -429,6 +530,9 @@ def main(argv=None) -> int:
                              "relative paths resolve against --workspace")
     parser.add_argument("-w", "--workspace", default=".",
                         help="working directory for every lane (default: cwd)")
+    parser.add_argument("--project-skill", action="append", default=[], metavar="NAME",
+                        help="authorize a project skill by frontmatter name; repeatable "
+                             "and resolved under --workspace")
     parser.add_argument("--synthesize", metavar="MODEL",
                         help="after collecting opinions, ask MODEL to synthesize them")
     parser.add_argument("--thinking", choices=THINKING_LEVELS, default=DEFAULT_THINKING,
@@ -467,6 +571,12 @@ def main(argv=None) -> int:
             return EXIT_FAILED
         files.append(str(resolved))
 
+    try:
+        project_skills = resolve_project_skills(workspace, args.project_skill)
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return EXIT_FAILED
+
     home = state_home()
     config_path = home / "config.json"
     saved_models = load_config(config_path)
@@ -498,11 +608,17 @@ def main(argv=None) -> int:
     run_dir = home / "runs" / f"run-{stamp}-{secrets.token_hex(4)}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    prompt = build_prompt(args.mode, task)
+    prompt = build_prompt(args.mode, task, project_skills)
     started = time.monotonic()
 
     lanes = []
     slugs = {}
+    skill_paths = [skill["path"].parent for skill in project_skills]
+    if project_skills:
+        enabled = ", ".join(
+            f"{skill['name']} ({skill['display_path']})" for skill in project_skills
+        )
+        print(f"[council] project skills: {enabled}", file=sys.stderr)
     print(f"[council] dispatching {len(models)} lanes: {', '.join(models)}", file=sys.stderr)
     with ThreadPoolExecutor(max_workers=len(models)) as pool:
         futures = {}
@@ -513,7 +629,8 @@ def main(argv=None) -> int:
             slug = base if n == 1 else f"{base}-{n}"
             futures[pool.submit(run_lane, model, prefix, files, prompt,
                                 workspace, args.timeout, run_dir, slug,
-                                thinking=args.thinking, keep_events=args.events)] = model
+                                thinking=args.thinking, keep_events=args.events,
+                                skill_paths=skill_paths)] = model
         for future in as_completed(futures):
             lane = future.result()
             lanes.append(lane)
@@ -545,7 +662,10 @@ def main(argv=None) -> int:
 
     result_path = Path(args.output).resolve() if args.output else run_dir / "result.md"
     result_path.parent.mkdir(parents=True, exist_ok=True)
-    built = write_result(run_dir, task, args.mode, lanes, synthesis, synthesis_note)
+    built = write_result(
+        run_dir, task, args.mode, lanes, synthesis,
+        synthesis_note=synthesis_note, project_skills=project_skills
+    )
     if result_path != built:
         shutil.copyfile(built, result_path)
 
@@ -571,6 +691,8 @@ def main(argv=None) -> int:
     print(f"output_path={result_path}")
     print(f"run_dir={run_dir}")
     print(f"models={','.join(models)}")
+    if project_skills:
+        print(f"project_skills={','.join(skill['name'] for skill in project_skills)}")
     if failed:
         print(f"failed={','.join(failed)}")
     print(f"elapsed={elapsed:.0f}s")

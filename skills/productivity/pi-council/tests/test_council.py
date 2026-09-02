@@ -118,6 +118,21 @@ class CouncilTestCase(unittest.TestCase):
     def read_result(self, stdout: str) -> str:
         return Path(self.get_output_path(stdout)).read_text(encoding="utf-8")
 
+    def make_project_skill(self, root: str, directory: str, name: str,
+                           explicit_only=False) -> Path:
+        path = self.workspace / root / "skills" / directory / "SKILL.md"
+        path.parent.mkdir(parents=True)
+        lines = [
+            "---",
+            f"name: {name}",
+            "description: Test project skill.",
+        ]
+        if explicit_only:
+            lines.append("disable-model-invocation: true")
+        lines += ["---", "", f"# {name}", "", "Follow this project skill.", ""]
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return path
+
     # ------------------------------------------------------------ test cases
 
     def test_success_parallel(self):
@@ -148,7 +163,7 @@ class CouncilTestCase(unittest.TestCase):
 
         def fake_run_lane(model, prefix, files, prompt, workspace, timeout,
                           run_dir, slug, tools=council.READ_ONLY_TOOLS,
-                          thinking=None, keep_events=False):
+                          thinking=None, keep_events=False, skill_paths=None):
             if model == "a/slow":
                 slow_release.wait(timeout=5)
             return {
@@ -263,12 +278,73 @@ class CouncilTestCase(unittest.TestCase):
         # read-only guarantee already comes from the --tools allowlist.
         self.assertNotIn("--no-extensions", argv)
         self.assertIn("--no-approve", argv)
+        self.assertNotIn("--skill", argv)
         tools = argv[argv.index("--tools") + 1].split(",")
         self.assertEqual(set(tools), {"read", "grep", "find", "ls"})
         self.assertFalse({"write", "edit", "bash", "powershell"} & set(tools))
         # Default thinking level is high; the prompt travels via stdin, never argv.
         self.assertEqual(argv[argv.index("--thinking") + 1], "high")
         self.assertNotIn("check args", json.dumps(argv))
+
+    def test_project_skill_is_resolved_by_name_and_audited(self):
+        skill_file = self.make_project_skill(
+            ".agents", "nested/reviewer", "review-helper", explicit_only=True
+        )
+        code, out, err = self.run_council([
+            "task", "--models", "a/m1", "-w", str(self.workspace),
+            "--project-skill", "review-helper",
+            "--project-skill", "review-helper",
+        ])
+        self.assertEqual(code, council.EXIT_OK)
+        argv = self.last_argv()
+        self.assertEqual(argv.count("--skill"), 1)
+        self.assertEqual(argv[argv.index("--skill") + 1], str(skill_file.parent.resolve()))
+        self.assertIn("--no-approve", argv)
+        self.assertNotIn("--approve", argv)
+        self.assertIn("project_skills=review-helper", out)
+        self.assertIn("project skills: review-helper", err)
+        self.assertIn(
+            "- Project skills: `review-helper` "
+            "(`.agents/skills/nested/reviewer/SKILL.md`)",
+            self.read_result(out),
+        )
+
+        skills = council.resolve_project_skills(self.workspace, ["review-helper"])
+        prompt = council.build_prompt("review", "task", skills)
+        self.assertIn(str(skill_file), prompt)
+        self.assertIn("Read each SKILL.md before answering", prompt)
+
+    def test_project_skill_lookup_fails_before_dispatch(self):
+        self.make_project_skill(".agents", "one", "available-skill")
+        code, _, err = self.run_council([
+            "task", "--models", "a/m1", "-w", str(self.workspace),
+            "--project-skill", "missing-skill",
+        ])
+        self.assertEqual(code, council.EXIT_FAILED)
+        self.assertIn("was not found", err)
+        self.assertIn("Available: available-skill", err)
+        self.assertFalse(self.argv_log.exists())
+
+        code, _, err = self.run_council([
+            "task", "--models", "a/m1", "-w", str(self.workspace),
+            "--project-skill", "../escape",
+        ])
+        self.assertEqual(code, council.EXIT_FAILED)
+        self.assertIn("Invalid project skill name", err)
+        self.assertFalse(self.argv_log.exists())
+
+    def test_project_skill_name_collision_is_rejected(self):
+        self.make_project_skill(".pi", "first", "same-skill")
+        self.make_project_skill(".agents", "second", "same-skill")
+        code, _, err = self.run_council([
+            "task", "--models", "a/m1", "-w", str(self.workspace),
+            "--project-skill", "same-skill",
+        ])
+        self.assertEqual(code, council.EXIT_FAILED)
+        self.assertIn("matches multiple SKILL.md files", err)
+        self.assertIn(".pi/skills/first/SKILL.md", err)
+        self.assertIn(".agents/skills/second/SKILL.md", err)
+        self.assertFalse(self.argv_log.exists())
 
     def test_thinking_override(self):
         code, out, _ = self.run_council(
@@ -315,17 +391,22 @@ class CouncilTestCase(unittest.TestCase):
         self.assertIn("fake-session-a/sleepy", events)  # partial output salvaged
 
     def test_synthesis_runs_without_tools(self):
+        skill_file = self.make_project_skill(".pi", "helper", "review-helper")
         code, out, _ = self.run_council(
             ["task", "--models", "a/m1", "--synthesize", "s/chair",
+             "--project-skill", "review-helper",
              "-w", str(self.workspace)])
         self.assertEqual(code, council.EXIT_OK)
         result = self.read_result(out)
         self.assertIn("## Synthesis — s/chair", result)
         self.assertIn("reply-from-s/chair", result)
         self.assertIn("| s/chair (synthesis) | ok | high |", result)
-        chair_argv = self.all_argvs()[-1]
+        member_argv, chair_argv = self.all_argvs()
+        self.assertEqual(member_argv[member_argv.index("--skill") + 1],
+                         str(skill_file.parent.resolve()))
         self.assertIn("--no-tools", chair_argv)
         self.assertNotIn("--tools", chair_argv)
+        self.assertNotIn("--skill", chair_argv)
 
     def test_synthesis_skipped_when_all_lanes_fail(self):
         code, out, _ = self.run_council(

@@ -37,6 +37,7 @@ python3 scripts/council.py "帮我评审这个重构思路" -m review
 | `-m <模式>` | `discuss` / `brainstorm` / `review` / `code-review` | `discuss` |
 | `-f <文件>` | 焦点文件嵌入 prompt（最多 4 个，评审代码必用） | 无 |
 | `-w <目录>` | 各路的工作目录，`-f` 相对路径基于此 | 当前目录 |
+| `--project-skill <名称>` | 按 frontmatter 名称显式启用项目 skill；可重复 | 无 |
 | `--models a,b,c` | 单次覆盖阵容（`--save` 则另存为默认） | 已存阵容 |
 | `--thinking <档位>` | 思考深度 `off`~`max`，成本/质量主杠杆 | `high` |
 | `--synthesize <模型>` | 收齐后追加一路「主席」做总结 | 不启用 |
@@ -59,17 +60,18 @@ council.py ──┬─ pi --model A ──┐
 result.md（状态表含 thinking 档位 + 各路观点全文 + 可选主席总结）
 ```
 
-每路实际执行：`pi -p --mode json --tools read,grep,find,ls --no-session --no-approve --model <模型>`，prompt 走 stdin。
+每路实际执行：`pi -p --mode json --tools read,grep,find,ls --no-session --no-approve --model <模型> [--skill <已解析目录> ...]`，prompt 走 stdin。
 
 ## 安全边界（如实说明）
 
 - 工具白名单限制的是「能做什么」，不是「能读什么」——lane 仍可读你账号能读的任何文件
-- 任务、焦点文件和 lane 读到的内容会**发给阵容里的每一家供应商**，涉密代码请勿上车
-- 不写会话、不信任项目级配置；详细论证见 [SKILL.md](SKILL.md)
+- lane 可自主发现用户级/全局 skill；项目 skill 默认排除，仅可用 `--project-skill <名称>` 从工作区 `.pi/skills`、`.agents/skills` 精确启用，且仍受只读工具限制
+- 任务、启用的项目 skill、焦点文件和 lane 读到的内容会**发给阵容里的每一家供应商**，涉密代码请勿上车
+- 不写会话、不加载未点名的项目级配置；详细论证见 [SKILL.md](SKILL.md)
 
 ## 产物与成本
 
-- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路完成时立即写入 `<model>.md`，全部结束后再生成 `result.md`；当日志显示某路 `done` / `FAILED` 时，对应 Markdown 已落盘；最终状态表记录各路及可选主席模型使用的 thinking 档位，便于审计
+- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路完成时立即写入 `<model>.md`，全部结束后再生成 `result.md`；当日志显示某路 `done` / `FAILED` 时，对应 Markdown 已落盘；最终报告审计启用的项目 skill，并记录各路及可选主席模型使用的 thinking 档位
 - 原始事件流默认不落盘（`--events` 开启，失败路始终保留）
 - 运行结束 stderr 会汇报累计占用（`N runs, X MB`），觉得多了直接删 `runs/` 即可
 - 成本 = N 路 token 之和，状态表按每路全轮次累计；3~4 路是性价比甜区
