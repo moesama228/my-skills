@@ -82,7 +82,7 @@ result.md（状态表含 thinking 档位 + 各路观点全文 + 可选主席总�
 
 ## 产物与成本
 
-- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路完成时立即写入 `<model>.md`，全部结束后再生成 `result.md`；当日志显示某路 `done` / `FAILED` 时，对应 Markdown 已落盘；最终报告审计启用的项目 skill，并记录各路及可选主席模型使用的 thinking 档位
+- 每次运行落在 `<state>/runs/run-<时间戳>/`：每路完成时立即写入 `<model>.md`，全部结束后再生成 `result.md`；当日志显示某路 `done` / `FAILED` 时，对应 Markdown 已落盘；每路 Markdown 与最终状态表均记录 thinking 档位（不含 thinking 内容），最终报告另审计启用的项目 skill
 - 原始事件流默认不落盘（`--events` 开启，失败路始终保留）
 - 运行结束 stderr 会汇报累计占用（`N runs, X MB`），觉得多了直接删 `runs/` 即可
 - 成本 = N 路 token 之和，状态表按每路全轮次累计；3~4 路是性价比甜区

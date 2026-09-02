@@ -155,7 +155,7 @@ class CouncilTestCase(unittest.TestCase):
         self.assertIn("| a/m1 | ok | high |", result)
         run_dir = Path([l.split("=", 1)[1] for l in out.splitlines()
                         if l.startswith("run_dir=")][0])
-        self.assertNotIn("thinking level", (run_dir / "a-m1.md").read_text(
+        self.assertIn("- thinking level: high", (run_dir / "a-m1.md").read_text(
             encoding="utf-8").lower())
 
     def test_lane_report_is_written_before_other_lanes_finish(self):
@@ -353,6 +353,10 @@ class CouncilTestCase(unittest.TestCase):
         argv = self.last_argv()
         self.assertEqual(argv[argv.index("--thinking") + 1], "off")
         self.assertIn("| a/m1 | ok | off |", self.read_result(out))
+        run_dir = Path([l.split("=", 1)[1] for l in out.splitlines()
+                        if l.startswith("run_dir=")][0])
+        self.assertIn("- thinking level: off", (run_dir / "a-m1.md").read_text(
+            encoding="utf-8").lower())
 
     def test_events_written_only_on_demand_or_failure(self):
         # Default: successful lanes leave no events.jsonl behind.

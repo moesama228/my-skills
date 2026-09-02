@@ -400,6 +400,7 @@ def write_lane_report(run_dir: Path, lane) -> Path:
         f"# {lane['model']}",
         "",
         f"- status: {'ok' if lane['ok'] else 'failed'}",
+        f"- thinking level: {lane.get('thinking_level') or '-'}",
         f"- elapsed: {lane['elapsed']:.1f}s",
         f"- tokens (in/out): {fmt_tokens(lane['usage'])}",
         f"- cost: {fmt_cost(lane['usage'])}",
